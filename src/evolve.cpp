@@ -379,6 +379,7 @@ int main(int argc, char *argv[])
 			std::cerr << "Pangenomes evolution log file could not be opened";
 			exit(1);
 		}else{
+            std::cout << "Opening pangenomes evolution log ..." << std::endl;
 			PANGENOMES_EVOLUTION_LOG <<"x"<<"\t"<<"r_x"<<std::endl;
 		}
 
@@ -389,6 +390,7 @@ int main(int argc, char *argv[])
 			std::cerr << "Gene gain events log file could not be opened";
 			exit(1);
 		}else{
+            std::cout << "Opening gene gain events log ..." << std::endl;
 			//d_cell is the donor cell and r_cell is the receiving cell
 			GENE_GAIN_EVENTS_LOG <<"gain_event_ID"<<"\t"<<"Generation_ctr"<<"\t"<<"d_cell_ID"<<"\t"<<"d_cell_barcode"<<"\t"<<"r_cell_ID"<<"\t"<<"r_cell_barcode"<<"\t"<<"gene_ID"<<std::endl;
 		}
@@ -400,6 +402,7 @@ int main(int argc, char *argv[])
 			std::cerr << "Gene loss events log file could not be opened";
 			exit(1);
 		}else{
+            std::cout << "Opening gene loss events log ..." << std::endl;
 			//t_cell is the target cell
 			GENE_LOSS_EVENTS_LOG <<"loss_event_ID"<<"\t"<<"Generation_ctr"<<"\t"<<"t_cell_ID"<<"\t"<<"t_cell_barcode"<<"gene_ID"<<std::endl;
 		}
@@ -467,10 +470,15 @@ int main(int argc, char *argv[])
         		nb_gain_to_sim = 0;
         		nb_loss_to_sim = 0;
         		// binomial distribution for gain
+//###########  
+//  probleme: deuxieme argument pour binomial doit etre dans [0,1], mais actuellement > 1 avec les parametres               
 				std::binomial_distribution<> binGain(DT, (pow(cell_it->gene_count(),lambda_plus)));
 				// number of gain event is drawn from binomial distribution with DT trial where DT is the time-step
 				nb_gain_to_sim = round(binGain(g_rng));
 				// binomial distribution for loss
+
+//###########  
+//  probleme: deuxieme argument pour binomial doit etre dans [0,1], mais actuellement > 1 avec les parametres
 				std::binomial_distribution<> binLoss(DT, (r_prime*pow(cell_it->gene_count(),lambda_minus)));
 				// number of loss event is drawn from binomial distribution with DT trial where DT is the time-step
 				nb_gain_to_sim = round(binLoss(g_rng));
@@ -483,9 +491,8 @@ int main(int argc, char *argv[])
 						auto cell_two = Cell_arr.begin() + random_index_cell;
 						while (cell_two->barcode() == cell_it->barcode()){
 							//choose random cell from which the gained gene will come (DON'T SHUFFLE Cell_arr here because you iterate through it)
-							std::uniform_int_distribution<int> uniff_dist(0, Cell_arr.size()-1);
-							int random_index_cell = uniff_dist(g_rng);
-							auto cell_two = Cell_arr.begin() + random_index_cell;
+							random_index_cell = uniff_dist(g_rng);
+							cell_two = Cell_arr.begin() + random_index_cell;
 						}
 						int ID_gene_gained = cell_it->add_gene(Gene(cell_two->get_random_gene()));
 						cell_it->set_accumPevFe(cell_it->get_accumPevFe() + a_for_s_x + (b_for_s_x * cell_it->gene_count()));
