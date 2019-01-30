@@ -387,3 +387,18 @@ const void Gene::setCell(Cell *C)
 {
     myCell_ = C;
 }
+
+Gene::Gene(const Gene& G, Cell *p_new_Cell) {
+	g_num_ = G.g_num_;
+	ln_ = G.ln_;
+	la_ = G.la_;
+	nucseq_ = G.nucseq_;
+	dg_ = G.dg_;
+	f_ = G.f_;
+	conc_ = G.conc_;
+	e_ = G.e_;
+	eff_ = G.eff_;
+	Na_ = G.Na_;
+	Ns_ = G.Ns_;
+	myCell_= p_new_Cell;
+}

@@ -48,6 +48,9 @@ public:
     const int gene_count() {return Gene_arr_.size();}
     const int genome_size() {return Gene_L_.back();}
     const std::string barcode() {return barcode_;}
+    Gene get_random_gene();
+    int add_gene(const Gene& p_G);
+    int remove_rand_gene();
 
     void change_ID(int a) {ID_ = a;}
     void setParent(uint32_t a) {parent_ = a;}
@@ -55,7 +58,15 @@ public:
 
     void ch_Fitness(double f){fitness_ = f;}
     const double fitness();
-    
+
+	double get_accumPevFe() const {
+		return accum_pev_fe;
+	}
+
+	void set_accumPevFe(double accumPevFe) {
+		accum_pev_fe = accumPevFe;
+	}
+
 protected:
     // organism barcode
     std::string barcode_;
@@ -65,6 +76,9 @@ protected:
 
     // parent ID
     int parent_;
+
+    //Accumulation of pangenome evolution (gain or loss of genes) fitness effects
+    double accum_pev_fe;
 
     // initial mutation rate
     double o_mrate_;
@@ -81,5 +95,6 @@ protected:
     //Cummulative sum of gene lengths (i.e. genome size)
     VectInt Gene_L_;
     
+
 };
 #endif

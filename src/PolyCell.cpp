@@ -29,7 +29,7 @@ void PolyCell::FillGene_L()
     int sum = 0;
     std::vector<Gene>::iterator i;
     for(i = Gene_arr_.begin(); i != Gene_arr_.end(); ++i){
-        sum+= (*i).length();
+        sum+= (i->length());
         Gene_L_.push_back(sum);
     }
 }
@@ -118,7 +118,7 @@ double PolyCell::multiplicative()
     {
         fitness += gene_it->f()*gene_it->e();
     }
-    return fitness/gene_count();
+    return ((fitness/gene_count()) + this->get_accumPevFe());
 }
 
 // NEUTRAL FITNESS FUNCTION
@@ -175,7 +175,7 @@ void PolyCell::ranmut_Gene(std::ofstream& log,int ctr)
         }
         else
         {
-            mutation = (*j).Mutate_Select(site,bp);
+            mutation = j->Mutate_Select(site,bp);
         }
     }
     else
@@ -186,7 +186,7 @@ void PolyCell::ranmut_Gene(std::ofstream& log,int ctr)
         }
         else
         {
-            mutation = (*j).Mutate_Stabil(site,bp);
+            mutation = j->Mutate_Stabil(site,bp);
         }
     }
 

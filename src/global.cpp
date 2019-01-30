@@ -705,7 +705,7 @@ void qread_Cell(std::fstream& IN, std::fstream& OUT)
     IN.read((char*)&l, sizeof(int));
     std::vector<char> buf(l);
     IN.read(&buf[0], l);
-    barcode.assign(buf.begin(), buf.end());
+    barcode.assign(buf.data(), buf.size());
 
     OUT << barcode;
 
@@ -732,7 +732,7 @@ void seqread_Cell(std::fstream& IN, std::fstream& OUT)
     IN.read((char*)&l, sizeof(int));
     std::vector<char> buf(l);
     IN.read(&buf[0], l);
-    barcode.assign(buf.begin(), buf.end());
+    barcode.assign(buf.data(), buf.size());
 
     OUT << barcode;
 
@@ -756,7 +756,7 @@ void seqread_Cell(std::fstream& IN, std::fstream& OUT)
         IN.read((char*)&nl, sizeof(int));
         std::vector<char> buff(nl);
         IN.read(&buff[0], nl);  
-        DNAsequence.assign(buff.begin(), buff.end());
+        DNAsequence.assign(buf.data(), buf.size());
 
         sprintf(buffer,"%d\tG\t%d\t%d\t",j,Ns,Na);
         OUT << buffer << std::endl;
@@ -788,7 +788,7 @@ void read_Cell(std::fstream& IN, std::fstream& OUT, bool DNA)
     IN.read((char*)&l, sizeof(int));
     std::vector<char> buf(l);
     IN.read(&buf[0], l);  
-    barcode.assign(buf.begin(), buf.end());
+    barcode.assign(buf.data(), buf.size());
 
     OUT << barcode;
 
@@ -819,7 +819,7 @@ void read_Cell(std::fstream& IN, std::fstream& OUT, bool DNA)
         IN.read((char*)&nl, sizeof(int));
         std::vector<char> buff(nl);
         IN.read(&buff[0], nl);  
-        DNAsequence.assign(buff.begin(), buff.end());
+        DNAsequence.assign(buf.data(), buf.size());
 
         sprintf(buffer,"%d\tG\t%e\t%.8f\t%.9f\t%d\t%d\t",j, c, dg, f, Na, Ns);
         OUT << buffer << std::endl;

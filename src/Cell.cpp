@@ -5,6 +5,7 @@ Cell::Cell():
     barcode_(getBarcode()),
     ID_(0),
     parent_(0),
+	accum_pev_fe(0),
     o_mrate_(0),
     c_mrate_(0),
     fitness_(0)
@@ -15,6 +16,7 @@ Cell::Cell():
 
 // Construct from cell file
 Cell::Cell(std::fstream & cell_in) {
+	accum_pev_fe = 0;
     char buffer[140];
     Gene_L_.reserve(GENECOUNTMAX);
     Gene_arr_.reserve(GENECOUNTMAX);
@@ -83,21 +85,22 @@ Cell::Cell(std::fstream & IN,
     IN.read((char*)(&cell_id), sizeof(int));
     ID_ = cell_id;
     parent_ = 0;
+    accum_pev_fe = 0;
 
     //read barcode
     int l;
-    IN.read((char*) & l, sizeof(int));
+    IN.read((char*) &l, sizeof(int));
     //construct vector container with nl elements
     std::vector<char> buf(l);
     IN.read(&buf[0], l);
-    ch_barcode(std::string().assign(buf.begin(), buf.end()));
+    ch_barcode(std::string().assign(buf.data(), buf.size()));
 
     IN.read((char*)(&f), sizeof(double));
     fitness_ = f;
     IN.read((char*)(&m), sizeof(double));
     c_mrate_ = m;
+    o_mrate_ = m;
     IN.read((char*)(&gene_size), sizeof(int));
-
     //read gene info
     for (int j = 0; j < gene_size; j++) {
         double e, c, dg, f, eff;
@@ -119,7 +122,7 @@ Cell::Cell(std::fstream & IN,
         //construct vector container with nl elements
         std::vector<char> buf(nl);
         IN.read(& buf[0], nl);
-        DNAsequence.assign(buf.begin(), buf.end());
+        DNAsequence.assign(buf.data(), buf.size());
 
         sprintf(buffer, "%s%d.gene", genesPath.c_str(), gene_nid);
         std::fstream gene_data(buffer);
@@ -146,6 +149,28 @@ void Cell::linkGenes()
     for(auto gene_it = this->Gene_arr_.begin(); gene_it != this->Gene_arr_.end(); gene_it++) {
         gene_it->setCell(this);
     }
+}
+
+Gene Cell::get_random_gene() {
+	// Shuffle the Gene vector/array of the current cell
+	std::shuffle(this->Gene_arr_.begin(), this->Gene_arr_.end(), g_rng);
+	// Return the last Gene of the vector/array now that it has been randomly shuffled
+	return this->Gene_arr_.back();
+}
+
+int Cell::remove_rand_gene() {
+	// Shuffle the Gene vector/array of the current cell
+	std::shuffle(this->Gene_arr_.begin(), this->Gene_arr_.end(), g_rng);
+	int ID_removed_gene = this->Gene_arr_.back().num();
+	// Remove the last element of the vector/array now that it has been randomly shuffled
+	this->Gene_arr_.pop_back();
+	return ID_removed_gene;
+}
+
+int Cell::add_gene(const Gene& n_G) {
+	Gene gained_gene = Gene(n_G,this);
+	Gene_arr_.push_back(gained_gene);
+	return gained_gene.num();
 }
 
 // // copy constructor
