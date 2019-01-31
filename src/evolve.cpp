@@ -373,18 +373,18 @@ int main(int argc, char *argv[])
 	if(simul_pangenomes_evolution){
 
 		// Open PANGENOMES_EVOLUTION_LOG
-		sprintf(buffer, "out/%s/PANGENOMES_EVOLUTION_LOG",outDir.c_str());
+		sprintf(buffer, "out/%s/PANGENOMES_EVOLUTION_LOG.txt",outDir.c_str());
 		PANGENOMES_EVOLUTION_LOG.open(buffer);
 		if ( !PANGENOMES_EVOLUTION_LOG.is_open() ) {
 			std::cerr << "Pangenomes evolution log file could not be opened";
 			exit(1);
 		}else{
             std::cout << "Opening pangenomes evolution log ..." << std::endl;
-			PANGENOMES_EVOLUTION_LOG <<"x"<<"\t"<<"r_x"<<std::endl;
+			PANGENOMES_EVOLUTION_LOG <<"x"<<"\t"<<"r_x"<<"\t"<<"Beta_x"<<"\t"<<"Alpha_x"<<std::endl;
 		}
 
 		// Open GENE_GAIN_EVENTS_LOG
-		sprintf(buffer, "out/%s/GENE_GAIN_EVENTS_LOG",outDir.c_str());
+		sprintf(buffer, "out/%s/GENE_GAIN_EVENTS_LOG.txt",outDir.c_str());
 		GENE_GAIN_EVENTS_LOG.open(buffer);
 		if ( !GENE_GAIN_EVENTS_LOG.is_open() ) {
 			std::cerr << "Gene gain events log file could not be opened";
@@ -396,7 +396,7 @@ int main(int argc, char *argv[])
 		}
 
 		// Open GENE_LOSS_EVENTS_LOG
-		sprintf(buffer, "out/%s/GENE_LOSS_EVENTS_LOG",outDir.c_str());
+		sprintf(buffer, "out/%s/GENE_LOSS_EVENTS_LOG.txt",outDir.c_str());
 		GENE_LOSS_EVENTS_LOG.open(buffer);
 		if ( !GENE_LOSS_EVENTS_LOG.is_open() ) {
 			std::cerr << "Gene loss events log file could not be opened";
@@ -469,19 +469,16 @@ int main(int argc, char *argv[])
 
         		nb_gain_to_sim = 0;
         		nb_loss_to_sim = 0;
-        		// binomial distribution for gain
-//###########  
-//  probleme: deuxieme argument pour binomial doit etre dans [0,1], mais actuellement > 1 avec les parametres               
-				std::binomial_distribution<> binGain(DT, (pow(cell_it->gene_count(),lambda_plus)));
-				// number of gain event is drawn from binomial distribution with DT trial where DT is the time-step
-				nb_gain_to_sim = round(binGain(g_rng));
+        		// Poisson distribution for number of gain events in timelap DT
+				std::poisson_distribution<> poissonGain(round(DT*(pow(cell_it->gene_count(),lambda_plus))));
+				// number of gain event is drawn from Poisson distribution with DT*gain_rate as the frequency of event trial where DT is the time-step
+				nb_gain_to_sim = round(poissonGain(g_rng));
 				// binomial distribution for loss
 
-//###########  
-//  probleme: deuxieme argument pour binomial doit etre dans [0,1], mais actuellement > 1 avec les parametres
-				std::binomial_distribution<> binLoss(DT, (r_prime*pow(cell_it->gene_count(),lambda_minus)));
-				// number of loss event is drawn from binomial distribution with DT trial where DT is the time-step
-				nb_gain_to_sim = round(binLoss(g_rng));
+				// Poisson distribution for number of loss events in timelap DT
+				std::poisson_distribution<> poissonLoss(round(DT*(r_prime*pow(cell_it->gene_count(),lambda_minus))));
+				// number of loss event is drawn from Poisson distribution with DT*loss_rate as the frequency of event trial where DT is the time-step
+				nb_gain_to_sim = round(poissonLoss(g_rng));
 				if (nb_gain_to_sim > 0){
 					//for each gain event
 					for (int num_gain_event_current_gen = 1; num_gain_event_current_gen < nb_gain_to_sim + 1;num_gain_event_current_gen++){
@@ -512,13 +509,13 @@ int main(int argc, char *argv[])
 						cell_it->ch_Fitness(cell_it->fitness() + cell_it->get_accumPevFe());
 						loss_event_ctr++;
 						//save feedback for the loss event
-						GENE_LOSS_EVENTS_LOG <<loss_event_ctr<<"\t"<<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<cell_it->ID()<<ID_gene_removed<<std::endl;
+						GENE_LOSS_EVENTS_LOG <<loss_event_ctr<<"\t"<<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<cell_it->ID()<<"\t"<<ID_gene_removed<<std::endl;
 
 					}
 
 				}
-				//save Feedback on genome size ( x ) and loss/gain rate ratio ( r_x ) in PANGENOME_LOG
-				PANGENOMES_EVOLUTION_LOG <<(cell_it->gene_count())<<"\t"<<(r_prime*pow(cell_it->gene_count(),(lambda_minus-lambda_plus)))<<std::endl;
+				//save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG
+				PANGENOMES_EVOLUTION_LOG <<(cell_it->gene_count())<<"\t"<<(r_prime*pow(cell_it->gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell_it->gene_count(),lambda_minus))<<"\t"<<pow(cell_it->gene_count(),lambda_plus)<<std::endl;
         	}
 
         	// fitness of cell j with respect to sum of population fitness
