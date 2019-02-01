@@ -153,7 +153,7 @@ void PolyCell::ranmut_Gene(std::ofstream& log,int ctr)
 
     if(site >= (*k)){
     // random number generated is greater than
-    // the cumulative sum of genes
+    // the first gene size
          for(k = Gene_L_.begin(); k != Gene_L_.end(); ++k){
              if( site< (*k) ) break;
              j++; 

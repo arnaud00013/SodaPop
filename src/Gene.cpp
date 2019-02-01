@@ -122,7 +122,7 @@ distribution parameters are hardcoded for now
 double Gene::Mutate_Stabil_Gaussian(int i, int j)
 { 
     if(i>=ln_){
-        std::cerr << "ERROR: Mutation site out of bounds."<< std::endl;
+        std::cerr << "ERROR: Mutation site out of bounds. Gene "<<this->num()<<" length is : "<<this->length()<<" but selected site is "<<i<< std::endl;
         exit(2);
     }       
 
@@ -241,7 +241,7 @@ This version of the mutation function draws the selection coefficient value from
 double Gene::Mutate_Select_Dist(int i, int j)
 { 
     if(i>=ln_){
-        std::cerr << "ERROR: Mutation site out of bounds."<< std::endl;
+    	std::cerr << "ERROR: Mutation site out of bounds. Gene "<<this->num()<<" length is : "<<this->length()<<" but selected site is "<<i<< std::endl;
         exit(2);
     }       
        

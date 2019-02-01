@@ -162,6 +162,8 @@ int Cell::remove_rand_gene() {
 	// Shuffle the Gene vector/array of the current cell
 	std::shuffle(this->Gene_arr_.begin(), this->Gene_arr_.end(), g_rng);
 	int ID_removed_gene = this->Gene_arr_.back().num();
+	this->Gene_L_.resize(GENECOUNTMAX);
+	this->FillGene_L();
 	// Remove the last element of the vector/array now that it has been randomly shuffled
 	this->Gene_arr_.pop_back();
 	return ID_removed_gene;
@@ -170,6 +172,8 @@ int Cell::remove_rand_gene() {
 int Cell::add_gene(const Gene& n_G) {
 	Gene gained_gene = Gene(n_G,this);
 	Gene_arr_.push_back(gained_gene);
+	this->Gene_L_.resize(GENECOUNTMAX);
+	this->FillGene_L();
 	return gained_gene.num();
 }
 
@@ -229,3 +233,4 @@ int Cell::total_mutations(const int & spec) {
     else if (spec == 1) return s;
     else return a;
 }
+
