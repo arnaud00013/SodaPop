@@ -23,7 +23,23 @@ Copyright (C) 2018 Louis Gauthier
 
 int main(int argc, char *argv[])
 {
-    // Some of these variables will hold the parameters input (or not) by the user
+
+// Used to split string around spaces.
+	istringstream ss("--sim-type s --normal --alpha -0.02 --beta 0.01 -p files/start/population.snap -g files/genes/gene_list.dat -o simTwoSpeciesHGT1 -t 100 -n 100 -m 200 -a -s 2 -V --aForSx 6e-12 --bForSx 2e-13 --rPrime 0.99 --lambdaPlus 0.00216 --lambdaMinus 0.0096 -e -T");
+
+	int indd = 1;
+	// Traverse through all words
+	do {
+		// Read a word
+		std::string word;
+		ss >> word;
+		std::strcpy(argv[indd],word.c_str());
+		indd++;
+		// While there is more to read
+	} while (ss);
+	argc=indd+1;
+
+	// Some of these variables will hold the parameters input (or not) by the user
     int GENERATION_CTR = 1;
     int GENERATION_MAX = GENERATION_CTR + 1;
     int MUTATION_CTR = 0;
@@ -45,6 +61,7 @@ int main(int argc, char *argv[])
     bool enableAnalysis = false;
     bool trackMutations = false;
     bool simul_pangenomes_evolution = false;
+    bool track_pangenomes_evolution = false;
     bool createPop = false;
     bool noMut = false;
 
@@ -98,6 +115,9 @@ int main(int argc, char *argv[])
         // boolean switch to simulate neutral Pangenomes evolution (Gain and loss of genes)
         TCLAP::SwitchArg pangenomes_evo_Arg("V","pangenomes-evolution","simulate neutral Pangenomes evolution (random Gain and loss of genes)", cmd, false);
         
+        // boolean switch to track pangenomes evolution events (Gain and loss of genes) and also track the evolution of genome size and loss rate / gain rate ratio
+		TCLAP::SwitchArg track_pangenomes_evo_Arg("T","track-PanEv","track pangenomes evolution events (Gain and loss of genes) and also track the evolution of genome size and loss rate / gain rate ratio", cmd, false);
+
         //parameter a to calculate the selection coefficient s(x)
 		TCLAP::ValueArg<double> a_Arg("","aForSx","parameter a to calculate s(x)",false,1,"double");
 
@@ -221,6 +241,7 @@ int main(int argc, char *argv[])
 
         enableAnalysis = analysisArg.getValue();
         simul_pangenomes_evolution = pangenomes_evo_Arg.getValue();
+        track_pangenomes_evolution = track_pangenomes_evo_Arg.getValue();
         lambda_plus = lambda_plus_Arg.getValue();
         lambda_minus = lambda_minus_Arg.getValue();
 		r_prime = r_prime_Arg.getValue();
@@ -478,7 +499,9 @@ int main(int argc, char *argv[])
 				// Poisson distribution for number of loss events in timelap DT
 				std::poisson_distribution<> poissonLoss(round(DT*(r_prime*pow(cell_it->gene_count(),lambda_minus))));
 				// number of loss event is drawn from Poisson distribution with DT*loss_rate as the frequency of event trial where DT is the time-step
-				nb_gain_to_sim = round(poissonLoss(g_rng));
+				nb_loss_to_sim = round(poissonLoss(g_rng));
+
+
 				if (nb_gain_to_sim > 0){
 					//for each gain event
 					for (int num_gain_event_current_gen = 1; num_gain_event_current_gen < nb_gain_to_sim + 1;num_gain_event_current_gen++){
@@ -495,9 +518,10 @@ int main(int argc, char *argv[])
 						cell_it->set_accumPevFe(cell_it->get_accumPevFe() + a_for_s_x + (b_for_s_x * cell_it->gene_count()));
 						cell_it->ch_Fitness(cell_it->fitness() + cell_it->get_accumPevFe());
 						gain_event_ctr++;
-						//save feedback for the gain event
-						GENE_GAIN_EVENTS_LOG <<gain_event_ctr<<"\t"<<GENERATION_CTR<<"\t"<<cell_two->ID()<<"\t"<<cell_two->barcode()<<"\t"<<cell_it->ID()<<"\t"<<cell_it->barcode()<<"\t"<<ID_gene_gained<<std::endl;
-
+						//If the user activated the option to get pangenome evolution feedbacks, save feedback for the gain event
+						if (track_pangenomes_evolution){
+							GENE_GAIN_EVENTS_LOG <<gain_event_ctr<<"\t"<<GENERATION_CTR<<"\t"<<cell_two->ID()<<"\t"<<cell_two->barcode()<<"\t"<<cell_it->ID()<<"\t"<<cell_it->barcode()<<"\t"<<ID_gene_gained<<std::endl;
+						}
 					}
 				}
 				if (nb_loss_to_sim > 0){
@@ -508,15 +532,19 @@ int main(int argc, char *argv[])
 						cell_it->set_accumPevFe(cell_it->get_accumPevFe() - a_for_s_x - (b_for_s_x * cell_it->gene_count()));
 						cell_it->ch_Fitness(cell_it->fitness() + cell_it->get_accumPevFe());
 						loss_event_ctr++;
-						//save feedback for the loss event
-						GENE_LOSS_EVENTS_LOG <<loss_event_ctr<<"\t"<<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<cell_it->ID()<<"\t"<<ID_gene_removed<<std::endl;
+						//If the user activated the option to get pangenome evolution feedbacks, save feedback for the loss event
+						if (track_pangenomes_evolution){
+							GENE_LOSS_EVENTS_LOG <<loss_event_ctr<<"\t"<<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<cell_it->ID()<<"\t"<<ID_gene_removed<<std::endl;
+						}
 
 					}
 
 				}
-				//save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG
-				PANGENOMES_EVOLUTION_LOG <<(cell_it->gene_count())<<"\t"<<(r_prime*pow(cell_it->gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell_it->gene_count(),lambda_minus))<<"\t"<<pow(cell_it->gene_count(),lambda_plus)<<std::endl;
-        	}
+				//If the user activated the option to get pangenome evolution feedbacks, save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG
+				if (track_pangenomes_evolution){
+					PANGENOMES_EVOLUTION_LOG <<(cell_it->gene_count())<<"\t"<<(r_prime*pow(cell_it->gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell_it->gene_count(),lambda_minus))<<"\t"<<pow(cell_it->gene_count(),lambda_plus)<<std::endl;
+				}
+			}
 
         	// fitness of cell j with respect to sum of population fitness
             double relative_fitness = cell_it->fitness()/w_sum;
