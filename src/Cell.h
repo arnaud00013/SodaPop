@@ -48,8 +48,9 @@ public:
     const int gene_count() {return Gene_arr_.size();}
     const int genome_size() {return Gene_L_.back();}
     const std::string barcode() {return barcode_;}
-    Gene get_random_gene();
-    int add_gene(const Gene& p_G);
+    Gene& get_random_gene();
+    static Gene selected_gene;
+    int add_gene(Gene& r_G);
     int remove_rand_gene();
 
     void change_ID(int a) {ID_ = a;}
@@ -94,7 +95,8 @@ protected:
 
     //Cummulative sum of gene lengths (i.e. genome size)
     VectInt Gene_L_;
-    
+
 
 };
+
 #endif

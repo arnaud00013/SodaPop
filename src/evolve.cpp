@@ -23,22 +23,6 @@ Copyright (C) 2018 Louis Gauthier
 
 int main(int argc, char *argv[])
 {
-
-// Used to split string around spaces.
-	istringstream ss("--sim-type s --normal --alpha -0.02 --beta 0.01 -p files/start/population.snap -g files/genes/gene_list.dat -o simTwoSpeciesHGT1 -t 100 -n 100 -m 200 -a -s 2 -V --aForSx 6e-12 --bForSx 2e-13 --rPrime 0.99 --lambdaPlus 0.00216 --lambdaMinus 0.0096 -e -T");
-
-	int indd = 1;
-	// Traverse through all words
-	do {
-		// Read a word
-		std::string word;
-		ss >> word;
-		std::strcpy(argv[indd],word.c_str());
-		indd++;
-		// While there is more to read
-	} while (ss);
-	argc=indd+1;
-
 	// Some of these variables will hold the parameters input (or not) by the user
     int GENERATION_CTR = 1;
     int GENERATION_MAX = GENERATION_CTR + 1;
@@ -481,28 +465,39 @@ int main(int argc, char *argv[])
             Cell_temp.reserve(N*2);
         }
 
+        bool more_than_one_sp = false;
+        //If the user chose to simulate pangenome evolution
+		if (simul_pangenomes_evolution){
+        //Determine the value of a boolean variable that will allow the program to handle the impact of extinction on HGT: check if there is still more than one species. It is possible that a species takes the advantage over the others which all goes extinct. Thus, HGT won't be possible anymore
+			std::string barcode_initial = Cell_arr.begin()->barcode();
+			for(auto cell_it = Cell_arr.begin(); cell_it != Cell_arr.end(); ++cell_it){
+				if (cell_it->barcode() != barcode_initial){
+					more_than_one_sp = true;
+					break;
+				}
+			}
+		}
 
         // for each cell in the population
         for(auto cell_it = Cell_arr.begin(); cell_it != Cell_arr.end(); ++cell_it)
         {
         	//Gene gain through HGT between different species & Gene loss event(s)
-        	if (simul_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
+        	if (simul_pangenomes_evolution){
 
         		nb_gain_to_sim = 0;
         		nb_loss_to_sim = 0;
-        		// Poisson distribution for number of gain events in timelap DT
-				std::poisson_distribution<> poissonGain(round(DT*(pow(cell_it->gene_count(),lambda_plus))));
-				// number of gain event is drawn from Poisson distribution with DT*gain_rate as the frequency of event trial where DT is the time-step
+        		// Poisson distribution for number of gain events in the current generation
+				std::poisson_distribution<> poissonGain(round((pow(cell_it->gene_count(),lambda_plus))));
+				// number of gain event is drawn from Poisson distribution with gain_rate as the expected number of gain events in the current generation
 				nb_gain_to_sim = round(poissonGain(g_rng));
 				// binomial distribution for loss
 
-				// Poisson distribution for number of loss events in timelap DT
-				std::poisson_distribution<> poissonLoss(round(DT*(r_prime*pow(cell_it->gene_count(),lambda_minus))));
-				// number of loss event is drawn from Poisson distribution with DT*loss_rate as the frequency of event trial where DT is the time-step
+				// Poisson distribution for number of loss events in the current generation
+				std::poisson_distribution<> poissonLoss(round((r_prime*pow(cell_it->gene_count(),lambda_minus))));
+				// number of loss event is drawn from Poisson distribution with loss_rate as the expected number of loss events in the current generation
 				nb_loss_to_sim = round(poissonLoss(g_rng));
 
-
-				if (nb_gain_to_sim > 0){
+				if ((nb_gain_to_sim > 0) && more_than_one_sp){
 					//for each gain event
 					for (int num_gain_event_current_gen = 1; num_gain_event_current_gen < nb_gain_to_sim + 1;num_gain_event_current_gen++){
 						//choose random cell from which the gained gene will come (DON'T SHUFFLE Cell_arr here because you iterate through it)
@@ -514,17 +509,17 @@ int main(int argc, char *argv[])
 							random_index_cell = uniff_dist(g_rng);
 							cell_two = Cell_arr.begin() + random_index_cell;
 						}
-						int ID_gene_gained = cell_it->add_gene(Gene(cell_two->get_random_gene()));
+						int ID_gene_gained = cell_it->add_gene(cell_two->get_random_gene());
 						cell_it->set_accumPevFe(cell_it->get_accumPevFe() + a_for_s_x + (b_for_s_x * cell_it->gene_count()));
 						cell_it->ch_Fitness(cell_it->fitness() + cell_it->get_accumPevFe());
 						gain_event_ctr++;
-						//If the user activated the option to get pangenome evolution feedbacks, save feedback for the gain event
-						if (track_pangenomes_evolution){
+						//If the user activated the option to get pangenome evolution feedbacks, save feedback for the gain event at each DT generations where DT is the time-step
+						if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
 							GENE_GAIN_EVENTS_LOG <<gain_event_ctr<<"\t"<<GENERATION_CTR<<"\t"<<cell_two->ID()<<"\t"<<cell_two->barcode()<<"\t"<<cell_it->ID()<<"\t"<<cell_it->barcode()<<"\t"<<ID_gene_gained<<std::endl;
 						}
 					}
 				}
-				if (nb_loss_to_sim > 0){
+				if ((nb_loss_to_sim > 0) && (cell_it->gene_count()>1) && more_than_one_sp){
 					//for each loss event
 					for (int num_loss_event_current_gen = 1; num_loss_event_current_gen < nb_loss_to_sim + 1;num_loss_event_current_gen++){
 						int ID_gene_removed = cell_it->remove_rand_gene(); //remove a random gene of *cell_it and return its ID
@@ -532,16 +527,15 @@ int main(int argc, char *argv[])
 						cell_it->set_accumPevFe(cell_it->get_accumPevFe() - a_for_s_x - (b_for_s_x * cell_it->gene_count()));
 						cell_it->ch_Fitness(cell_it->fitness() + cell_it->get_accumPevFe());
 						loss_event_ctr++;
-						//If the user activated the option to get pangenome evolution feedbacks, save feedback for the loss event
-						if (track_pangenomes_evolution){
+						//If the user activated the option to get pangenome evolution feedbacks, save feedback for the loss event at each DT generations where DT is the time-step
+						if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
 							GENE_LOSS_EVENTS_LOG <<loss_event_ctr<<"\t"<<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<cell_it->ID()<<"\t"<<ID_gene_removed<<std::endl;
 						}
-
 					}
 
 				}
-				//If the user activated the option to get pangenome evolution feedbacks, save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG
-				if (track_pangenomes_evolution){
+				//If the user activated the option to get pangenome evolution feedbacks, save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG at each DT generations where DT is the time-step
+				if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
 					PANGENOMES_EVOLUTION_LOG <<(cell_it->gene_count())<<"\t"<<(r_prime*pow(cell_it->gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell_it->gene_count(),lambda_minus))<<"\t"<<pow(cell_it->gene_count(),lambda_plus)<<std::endl;
 				}
 			}

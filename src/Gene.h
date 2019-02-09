@@ -99,6 +99,7 @@ public:
 
         static std::gamma_distribution<> gamma_;
         static std::normal_distribution<> normal_;     
+
 };
 
 #endif

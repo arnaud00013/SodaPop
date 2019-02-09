@@ -1,5 +1,6 @@
 // Gene.cpp
 #include "Cell.h"
+Gene Cell::selected_gene = Gene();
 
 Cell::Cell():
     barcode_(getBarcode()),
@@ -151,30 +152,45 @@ void Cell::linkGenes()
     }
 }
 
-Gene Cell::get_random_gene() {
-	// Shuffle the Gene vector/array of the current cell
-	std::shuffle(this->Gene_arr_.begin(), this->Gene_arr_.end(), g_rng);
-	// Return the last Gene of the vector/array now that it has been randomly shuffled
-	return this->Gene_arr_.back();
+Gene& Cell::get_random_gene() {
+	// 1. Create a temporary vector of indices corresponding to the actual gene objects
+	std::vector<int> indices(Gene_arr_.size());
+	std::iota(indices.begin(), indices.end(), 0);
+	// 2. Shuffle the vector of indices using the already instantiated rng
+	std::shuffle(indices.begin(), indices.end(), g_rng);
+	// 3. Take the last element as ID of the gene to be selected
+	int ID_random_gene = indices.back();
+	// 4. Return the random gene
+	Cell::selected_gene =  Gene(*(this->Gene_arr_.begin() + ID_random_gene),this);
+	return selected_gene;
 }
 
 int Cell::remove_rand_gene() {
-	// Shuffle the Gene vector/array of the current cell
-	std::shuffle(this->Gene_arr_.begin(), this->Gene_arr_.end(), g_rng);
-	int ID_removed_gene = this->Gene_arr_.back().num();
-	this->Gene_L_.resize(GENECOUNTMAX-1);
+	// 1. Create a temporary vector of indices corresponding to the actual gene objects
+	std::vector<int> indices(Gene_arr_.size());
+	std::iota(indices.begin(), indices.end(), 0);
+	// 2. Shuffle the vector of indices using the already instantiated rng
+	std::shuffle(indices.begin(), indices.end(), g_rng);
+	// 3. Take the last element as ID of the gene to be removed
+	int ID_removed_gene = indices.back();
+	// 4. Erase the gene from the vector. Note that the vector is automatically resized
+	Gene_arr_.erase(Gene_arr_.begin() + ID_removed_gene);
+	//Update Gene_L_
+	this->Gene_L_.resize(this->gene_count()-1);
 	this->FillGene_L();
-	// Remove the last element of the vector/array now that it has been randomly shuffled
-	this->Gene_arr_.pop_back();
+
 	return ID_removed_gene;
 }
 
-int Cell::add_gene(const Gene& n_G) {
-	Gene gained_gene = Gene(n_G,this);
-	Gene_arr_.push_back(gained_gene);
-	this->Gene_L_.resize(GENECOUNTMAX+1);
+int Cell::add_gene(Gene& n_G) {
+	n_G.setCell(this);
+	Gene_arr_.push_back(n_G);
+	std::cout<<"Gain event : Cell"<<this->ID()<<" new gene number is "<<n_G.num()<<" and has length : "<<n_G.length()<<std::endl;
+	//Update Gene_L_
+	this->Gene_L_.resize(this->gene_count()+1);
 	this->FillGene_L();
-	return gained_gene.num();
+
+	return n_G.num();
 }
 
 // // copy constructor

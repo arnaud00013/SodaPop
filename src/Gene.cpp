@@ -84,6 +84,21 @@ Gene::Gene(const Gene& G)
     Ns_ = G.Ns_;
 }
 
+Gene::Gene()
+{
+	g_num_ = 0;
+	ln_ = 0;
+	la_ = 0;
+	nucseq_ = "";
+	dg_ = 0;
+	f_ =5;
+	conc_ = 0;
+	e_ = 0;
+	eff_ = 0;
+	Na_ = 0;
+	Ns_ = 0;
+}
+
 Gene::~Gene()
 {
 }
