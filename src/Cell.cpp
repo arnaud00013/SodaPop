@@ -185,7 +185,7 @@ int Cell::remove_rand_gene() {
 int Cell::add_gene(Gene& n_G) {
 	n_G.setCell(this);
 	Gene_arr_.push_back(n_G);
-	std::cout<<"Gain event : Cell"<<this->ID()<<" new gene number is "<<n_G.num()<<" and has length : "<<n_G.length()<<std::endl;
+	//std::cout<<"Gain event : Cell"<<this->ID()<<" new gene number is "<<n_G.num()<<" and has length : "<<n_G.length()<<std::endl;
 	//Update Gene_L_
 	this->Gene_L_.resize(this->gene_count()+1);
 	this->FillGene_L();
