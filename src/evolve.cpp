@@ -452,6 +452,38 @@ int main(int argc, char *argv[])
 		}
     }
 
+/*
+////////////////BEGIN TESTS
+    std::cout<<std::endl<<"////////////////BEGIN TESTS"<<std::endl;
+    //Test Cell::select_random_gene()
+    std::cout<<"Test Cell::select_random_gene():"<<std::endl;
+    (*(Cell_arr.begin())).select_random_gene();
+    std::cout<<"current selected gene is gene"<<Cell::selected_gene.num()<<" and has length "<<Cell::selected_gene.length()<<std::endl;
+
+    //Test Cell::remove_rand_gene()
+    std::cout<<"Test Cell::remove_rand_gene():"<<std::endl;
+    auto current_cell_it = Cell_arr.begin();
+    current_cell_it->remove_rand_gene();
+    current_cell_it->print_summary_Gene_L_();
+    current_cell_it->print_summary_Gene_arr_();
+
+    //Test Cell::select_random_gene() and add_gene()
+    std::cout<<"Test Cell::select_random_gene() and Cell::add_gene():"<<std::endl;
+   	std::uniform_int_distribution<int> uniff_dist(0, Cell_arr.size()-1);
+	int random_index_cell = uniff_dist(g_rng);
+	auto cell_two = Cell_arr.begin() + random_index_cell;
+	while (cell_two->barcode() == current_cell_it->barcode()){
+		//choose random cell from which the gained gene will come (DON'T SHUFFLE Cell_arr here because you iterate through it)
+		random_index_cell = uniff_dist(g_rng);
+		cell_two = Cell_arr.begin() + random_index_cell;
+	}
+	cell_two->select_random_gene();
+	int ID_gene_gained = current_cell_it->add_gene();
+	current_cell_it->print_summary_Gene_L_();
+	current_cell_it->print_summary_Gene_arr_();
+	std::cout<<std::endl<<"////////////////END TESTS"<<std::endl;
+/////////////////END TESTS
+*/
     // PSEUDO WRIGHT-FISHER PROCESS
     while(GENERATION_CTR < GENERATION_MAX)
     {
@@ -509,7 +541,8 @@ int main(int argc, char *argv[])
 							random_index_cell = uniff_dist(g_rng);
 							cell_two = Cell_arr.begin() + random_index_cell;
 						}
-						int ID_gene_gained = cell_it->add_gene(cell_two->get_random_gene());
+						cell_two->select_random_gene();
+						int ID_gene_gained = cell_it->add_gene();
 						cell_it->set_accumPevFe(cell_it->get_accumPevFe() + a_for_s_x + (b_for_s_x * cell_it->gene_count()));
 						cell_it->ch_Fitness(cell_it->fitness() + cell_it->get_accumPevFe());
 						gain_event_ctr++;

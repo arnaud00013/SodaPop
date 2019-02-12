@@ -48,10 +48,13 @@ public:
     const int gene_count() {return Gene_arr_.size();}
     const int genome_size() {return Gene_L_.back();}
     const std::string barcode() {return barcode_;}
-    Gene& get_random_gene();
+    void select_random_gene();
     static Gene selected_gene;
-    int add_gene(Gene& r_G);
+    int add_gene();
     int remove_rand_gene();
+    void print_summary_Gene_arr_();
+    void print_summary_Gene_L_();
+
 
     void change_ID(int a) {ID_ = a;}
     void setParent(uint32_t a) {parent_ = a;}

@@ -152,7 +152,8 @@ void Cell::linkGenes()
     }
 }
 
-Gene& Cell::get_random_gene() {
+//Select a random gene from the cell to be transferred to another cell by saving a copy of it in the static member selected_gene of the Gene class
+void Cell::select_random_gene() {
 	// 1. Create a temporary vector of indices corresponding to the actual gene objects
 	std::vector<int> indices(Gene_arr_.size());
 	std::iota(indices.begin(), indices.end(), 0);
@@ -162,7 +163,6 @@ Gene& Cell::get_random_gene() {
 	int ID_random_gene = indices.back();
 	// 4. Return the random gene
 	Cell::selected_gene =  Gene(*(this->Gene_arr_.begin() + ID_random_gene),this);
-	return selected_gene;
 }
 
 int Cell::remove_rand_gene() {
@@ -176,21 +176,38 @@ int Cell::remove_rand_gene() {
 	// 4. Erase the gene from the vector. Note that the vector is automatically resized
 	Gene_arr_.erase(Gene_arr_.begin() + ID_removed_gene);
 	//Update Gene_L_
+	this->Gene_L_.clear();
 	this->Gene_L_.resize(this->gene_count()-1);
 	this->FillGene_L();
 
 	return ID_removed_gene;
 }
 
-int Cell::add_gene(Gene& n_G) {
-	n_G.setCell(this);
-	Gene_arr_.push_back(n_G);
+//Add the selected gene saved in the static memeber selected_gene in the present cell
+int Cell::add_gene() {
+	Cell::selected_gene.setCell(this);
+	Gene_arr_.push_back(Cell::selected_gene);
 	//std::cout<<"Gain event : Cell"<<this->ID()<<" new gene number is "<<n_G.num()<<" and has length : "<<n_G.length()<<std::endl;
 	//Update Gene_L_
+	this->Gene_L_.clear();
 	this->Gene_L_.resize(this->gene_count()+1);
 	this->FillGene_L();
 
-	return n_G.num();
+	return Cell::selected_gene.num();
+}
+
+void Cell::print_summary_Gene_arr_() {
+	for (auto current_gene_it = this->Gene_arr_.begin(); current_gene_it!=this->Gene_arr_.end();++current_gene_it){
+		 std::cout<<"current gene of cell"<< this->ID()<<" is gene"<<current_gene_it->num()<<" and has length "<<current_gene_it->length()<<std::endl;
+	}
+}
+
+void Cell::print_summary_Gene_L_() {
+	std::cout<<"cumulative lengths of cell"<< this->ID()<<" is :"<<std::endl;
+	for (auto it_cumul_length = this->Gene_L_.begin(); it_cumul_length!=this->Gene_L_.end();++it_cumul_length){
+		std::cout<<*(it_cumul_length)<<std::endl;
+	}
+
 }
 
 // // copy constructor

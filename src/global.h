@@ -46,7 +46,7 @@ Copyright (C) 2018 Louis Gauthier
  */
 
 #define POPSIZEMAX 	1000000
-#define GENECOUNTMAX 	10
+#define GENECOUNTMAX 	10000
 
 // for pretty printing of progress
 #define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
