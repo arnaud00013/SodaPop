@@ -452,7 +452,7 @@ int main(int argc, char *argv[])
 		}
     }
 
-/*
+
 ////////////////BEGIN TESTS
     std::cout<<std::endl<<"////////////////BEGIN TESTS"<<std::endl;
     //Test Cell::select_random_gene()
@@ -483,7 +483,7 @@ int main(int argc, char *argv[])
 	current_cell_it->print_summary_Gene_arr_();
 	std::cout<<std::endl<<"////////////////END TESTS"<<std::endl;
 /////////////////END TESTS
-*/
+
     // PSEUDO WRIGHT-FISHER PROCESS
     while(GENERATION_CTR < GENERATION_MAX)
     {
