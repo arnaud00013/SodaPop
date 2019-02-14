@@ -118,7 +118,7 @@ double PolyCell::multiplicative()
     {
         fitness += gene_it->f()*gene_it->e();
     }
-    return ((fitness/gene_count()) + this->get_accumPevFe());
+    return ((fitness/gene_count()) * this->get_accumPevFe());
 }
 
 // NEUTRAL FITNESS FUNCTION

@@ -543,8 +543,8 @@ int main(int argc, char *argv[])
 						}
 						cell_two->select_random_gene();
 						int ID_gene_gained = cell_it->add_gene();
-						cell_it->set_accumPevFe(cell_it->get_accumPevFe() + a_for_s_x + (b_for_s_x * cell_it->gene_count()));
-						cell_it->ch_Fitness(cell_it->fitness() + cell_it->get_accumPevFe());
+						cell_it->set_accumPevFe(cell_it->get_accumPevFe() * (1 + a_for_s_x + (b_for_s_x * cell_it->gene_count())));
+						cell_it->ch_Fitness(cell_it->fitness() * cell_it->get_accumPevFe());
 						gain_event_ctr++;
 						//If the user activated the option to get pangenome evolution feedbacks, save feedback for the gain event at each DT generations where DT is the time-step
 						if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
@@ -557,8 +557,8 @@ int main(int argc, char *argv[])
 					for (int num_loss_event_current_gen = 1; num_loss_event_current_gen < nb_loss_to_sim + 1;num_loss_event_current_gen++){
 						int ID_gene_removed = cell_it->remove_rand_gene(); //remove a random gene of *cell_it and return its ID
 						//s_loss(x) = -s_gain(x)
-						cell_it->set_accumPevFe(cell_it->get_accumPevFe() - a_for_s_x - (b_for_s_x * cell_it->gene_count()));
-						cell_it->ch_Fitness(cell_it->fitness() + cell_it->get_accumPevFe());
+						cell_it->set_accumPevFe(cell_it->get_accumPevFe() * (1 - a_for_s_x - (b_for_s_x * cell_it->gene_count())));
+						cell_it->ch_Fitness(cell_it->fitness() * cell_it->get_accumPevFe());
 						loss_event_ctr++;
 						//If the user activated the option to get pangenome evolution feedbacks, save feedback for the loss event at each DT generations where DT is the time-step
 						if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){

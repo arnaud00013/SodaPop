@@ -6,7 +6,7 @@ Cell::Cell():
     barcode_(getBarcode()),
     ID_(0),
     parent_(0),
-	accum_pev_fe(0),
+	accum_pev_fe(1),
     o_mrate_(0),
     c_mrate_(0),
     fitness_(0)
@@ -17,7 +17,7 @@ Cell::Cell():
 
 // Construct from cell file
 Cell::Cell(std::fstream & cell_in) {
-	accum_pev_fe = 0;
+	accum_pev_fe = 1;
     char buffer[140];
     Gene_L_.reserve(GENECOUNTMAX);
     Gene_arr_.reserve(GENECOUNTMAX);
@@ -86,7 +86,7 @@ Cell::Cell(std::fstream & IN,
     IN.read((char*)(&cell_id), sizeof(int));
     ID_ = cell_id;
     parent_ = 0;
-    accum_pev_fe = 0;
+    accum_pev_fe = 1;
 
     //read barcode
     int l;
