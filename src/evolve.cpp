@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     double a_for_s_x = 0;
     double b_for_s_x = 0;
     double avg_DG = 0;
-    unsigned int N=1;
+    unsigned int N = 1;
     int DT = 1;
     char buffer[200];
     bool enableAnalysis = false;
@@ -48,6 +48,7 @@ int main(int argc, char *argv[])
     bool track_pangenomes_evolution = false;
     bool createPop = false;
     bool noMut = false;
+    bool msg_hgt_off_already_printed = false;
 
     std::string inputType;
     std::string geneListFile, genesPath;
@@ -385,7 +386,7 @@ int main(int argc, char *argv[])
 			exit(1);
 		}else{
             std::cout << "Opening pangenomes evolution log ..." << std::endl;
-			PANGENOMES_EVOLUTION_LOG <<"x"<<"\t"<<"r_x"<<"\t"<<"Beta_x"<<"\t"<<"Alpha_x"<<std::endl;
+			PANGENOMES_EVOLUTION_LOG <<"cell_ID"<<"\t"<<"x"<<"\t"<<"r_x"<<"\t"<<"Beta_x"<<"\t"<<"Alpha_x"<<std::endl;
 		}
 
 		// Open GENE_GAIN_EVENTS_LOG
@@ -455,14 +456,34 @@ int main(int argc, char *argv[])
 /*
 ////////////////BEGIN TESTS
     std::cout<<std::endl<<"////////////////BEGIN TESTS"<<std::endl;
+    std::cout<<"print initial state of Cell1 gene array : "<<std::endl;
+    auto current_cell_it = Cell_arr.begin();
+    current_cell_it->print_summary_Gene_L_();
+    current_cell_it->print_summary_Gene_arr_();
+
+    //Test multiple Cell::remove_rand_gene()
+	std::cout<<"Test Cell::remove_rand_gene():"<<std::endl;
+
+	current_cell_it->remove_rand_gene();
+	current_cell_it->remove_rand_gene();
+	current_cell_it->remove_rand_gene();
+	current_cell_it->remove_rand_gene();
+	current_cell_it->remove_rand_gene();
+	current_cell_it->remove_rand_gene();
+	current_cell_it->remove_rand_gene();
+	current_cell_it->remove_rand_gene();
+	current_cell_it->remove_rand_gene();
+	current_cell_it->print_summary_Gene_L_();
+	current_cell_it->print_summary_Gene_arr_();
+
     //Test Cell::select_random_gene()
     std::cout<<"Test Cell::select_random_gene():"<<std::endl;
     (*(Cell_arr.begin())).select_random_gene();
     std::cout<<"current selected gene is gene"<<Cell::selected_gene.num()<<" and has length "<<Cell::selected_gene.length()<<std::endl;
 
-    //Test Cell::remove_rand_gene()
+    //Test single Cell::remove_rand_gene()
     std::cout<<"Test Cell::remove_rand_gene():"<<std::endl;
-    auto current_cell_it = Cell_arr.begin();
+
     current_cell_it->remove_rand_gene();
     current_cell_it->print_summary_Gene_L_();
     current_cell_it->print_summary_Gene_arr_();
@@ -484,20 +505,23 @@ int main(int argc, char *argv[])
 	std::cout<<std::endl<<"////////////////END TESTS"<<std::endl;
 /////////////////END TESTS
 */
+
     // PSEUDO WRIGHT-FISHER PROCESS
     while(GENERATION_CTR < GENERATION_MAX)
     {
         printProgress(GENERATION_CTR*1.0/GENERATION_MAX);
         std::vector<PolyCell> Cell_temp;
-        // reserve 2N to allow overflow and prevent segfault
-        if(N<10000){
-            Cell_temp.reserve(N*5);
-        }
-        else{
-            Cell_temp.reserve(N*2);
-        }
+
+		// reserve k*N to allow overflow and prevent segfault
+		if(N<10000){
+			Cell_temp.reserve(N*5);
+		}
+		else{
+			Cell_temp.reserve(N*3);
+		}
 
         bool more_than_one_sp = false;
+
         //If the user chose to simulate pangenome evolution
 		if (simul_pangenomes_evolution){
         //Determine the value of a boolean variable that will allow the program to handle the impact of extinction on HGT: check if there is still more than one species. It is possible that a species takes the advantage over the others which all goes extinct. Thus, HGT won't be possible anymore
@@ -507,6 +531,23 @@ int main(int argc, char *argv[])
 					more_than_one_sp = true;
 					break;
 				}
+			}
+			if (!more_than_one_sp && !msg_hgt_off_already_printed){
+				//create REPORT_IF_ONE_SPECIES_LEFT.txt
+				std::ofstream file_report_one_sp_left;
+				// Open REPORT_IF_ONE_SPECIES_LEFT.txt
+				sprintf(buffer, "out/%s/REPORT_IF_ONE_SPECIES_LEFT.txt",outDir.c_str());
+				file_report_one_sp_left.open(buffer);
+				if ( !file_report_one_sp_left.is_open() ) {
+					std::cerr << "Report file for the case when there is only one species left could not be opened";
+					exit(1);
+				}else{
+					std::cout << "Opening one_species_left case report file ..." << std::endl;
+					file_report_one_sp_left<<"HGT has been turned off at generation "<<GENERATION_CTR<<" because there is only one species left. This species most likely became too abundant compared to the others until they went totally extincted. This species has barcode "<< Cell_arr.begin()->barcode() <<" and its cell count = "<< N <<" cells"<<std::endl;
+					msg_hgt_off_already_printed = true;
+					file_report_one_sp_left.close();
+				}
+
 			}
 		}
 
@@ -552,24 +593,26 @@ int main(int argc, char *argv[])
 						}
 					}
 				}
-				if ((nb_loss_to_sim > 0) && (cell_it->gene_count()>1) && more_than_one_sp){
+				if ((nb_loss_to_sim > 0) && more_than_one_sp){
 					//for each loss event
 					for (int num_loss_event_current_gen = 1; num_loss_event_current_gen < nb_loss_to_sim + 1;num_loss_event_current_gen++){
-						int ID_gene_removed = cell_it->remove_rand_gene(); //remove a random gene of *cell_it and return its ID
-						//s_loss(x) = -s_gain(x)
-						cell_it->set_accumPevFe(cell_it->get_accumPevFe() * (1 - a_for_s_x - (b_for_s_x * cell_it->gene_count())));
-						cell_it->ch_Fitness(cell_it->fitness() * cell_it->get_accumPevFe());
-						loss_event_ctr++;
-						//If the user activated the option to get pangenome evolution feedbacks, save feedback for the loss event at each DT generations where DT is the time-step
-						if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
-							GENE_LOSS_EVENTS_LOG <<loss_event_ctr<<"\t"<<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<cell_it->ID()<<"\t"<<ID_gene_removed<<std::endl;
+						if (cell_it->gene_count()>1){
+							int ID_gene_removed = cell_it->remove_rand_gene(); //remove a random gene of *cell_it and return its ID
+							//s_loss(x) = -s_gain(x)
+							cell_it->set_accumPevFe(cell_it->get_accumPevFe() * (1 - a_for_s_x - (b_for_s_x * cell_it->gene_count())));
+							cell_it->ch_Fitness(cell_it->fitness() * cell_it->get_accumPevFe());
+							loss_event_ctr++;
+							//If the user activated the option to get pangenome evolution feedbacks, save feedback for the loss event at each DT generations where DT is the time-step
+							if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
+								GENE_LOSS_EVENTS_LOG <<loss_event_ctr<<"\t"<<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<cell_it->ID()<<"\t"<<ID_gene_removed<<std::endl;
+							}
 						}
 					}
 
 				}
 				//If the user activated the option to get pangenome evolution feedbacks, save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG at each DT generations where DT is the time-step
 				if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
-					PANGENOMES_EVOLUTION_LOG <<(cell_it->gene_count())<<"\t"<<(r_prime*pow(cell_it->gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell_it->gene_count(),lambda_minus))<<"\t"<<pow(cell_it->gene_count(),lambda_plus)<<std::endl;
+					PANGENOMES_EVOLUTION_LOG <<cell_it->ID()<<"\t"<<(cell_it->gene_count())<<"\t"<<(r_prime*pow(cell_it->gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell_it->gene_count(),lambda_minus))<<"\t"<<pow(cell_it->gene_count(),lambda_plus)<<std::endl;
 				}
 			}
 
@@ -579,7 +622,8 @@ int main(int argc, char *argv[])
             std::binomial_distribution<> binCell(N, relative_fitness);
             // number of progeny k is drawn from binomial distribution with N trials and mean w=relative_fitness
             int n_progeny = binCell(g_rng);
-            
+            //std::cout << "relative fitness "<<relative_fitness<<std::endl;
+            //std::cout << "number of progenies "<<n_progeny<<std::endl;
             // if nil, the cell will be wiped from the population
             if(n_progeny == 0) continue; 
 
