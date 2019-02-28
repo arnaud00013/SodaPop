@@ -410,7 +410,7 @@ int main(int argc, char *argv[])
 		}else{
             std::cout << "Opening gene loss events log ..." << std::endl;
 			//t_cell is the target cell
-			GENE_LOSS_EVENTS_LOG <<"loss_event_ID"<<"\t"<<"Generation_ctr"<<"\t"<<"t_cell_ID"<<"\t"<<"t_cell_barcode"<<"gene_ID"<<std::endl;
+			GENE_LOSS_EVENTS_LOG <<"loss_event_ID"<<"\t"<<"Generation_ctr"<<"\t"<<"t_cell_ID"<<"\t"<<"t_cell_barcode"<<"\t"<<"gene_ID"<<std::endl;
 		}
 	}
 
@@ -604,7 +604,7 @@ int main(int argc, char *argv[])
 							loss_event_ctr++;
 							//If the user activated the option to get pangenome evolution feedbacks, save feedback for the loss event at each DT generations where DT is the time-step
 							if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
-								GENE_LOSS_EVENTS_LOG <<loss_event_ctr<<"\t"<<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<cell_it->ID()<<"\t"<<ID_gene_removed<<std::endl;
+								GENE_LOSS_EVENTS_LOG <<loss_event_ctr<<"\t"<<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<cell_it->barcode()<<"\t"<<ID_gene_removed<<std::endl;
 							}
 						}
 					}
