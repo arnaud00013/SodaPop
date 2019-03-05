@@ -528,7 +528,7 @@ int main(int argc, char *argv[])
 					exit(1);
 				}else{
 					std::cout << "Opening one_species_left case report file ..." << std::endl;
-					file_report_one_sp_left<<"HGT has been turned off at generation "<<GENERATION_CTR<<" because there is only one species left. This species most likely became too abundant compared to the others until they went totally extincted. This species has barcode "<< Cell_arr.begin()->barcode() <<" and its cell count = "<< N <<" cells"<<std::endl;
+					file_report_one_sp_left<<"HGT has been turned off at generation "<<GENERATION_CTR-1<<" because there is only one species left. This species most likely became too abundant compared to the others until they went totally extincted. This species has barcode "<< Cell_arr.begin()->barcode() <<" and its cell count = "<< N <<" cells"<<std::endl;
 					msg_hgt_off_already_printed = true;
 					file_report_one_sp_left.close();
 				}
