@@ -386,7 +386,7 @@ int main(int argc, char *argv[])
 			exit(1);
 		}else{
             std::cout << "Opening pangenomes evolution log ..." << std::endl;
-			PANGENOMES_EVOLUTION_LOG <<"Generation_ctr"<<"\t"<<"cell_ID"<<"\t"<<"x"<<"\t"<<"r_x"<<"\t"<<"Beta_x"<<"\t"<<"Alpha_x"<<"fitness"<<std::endl;
+			PANGENOMES_EVOLUTION_LOG <<"Generation_ctr"<<"\t"<<"cell_ID"<<"\t"<<"x"<<"\t"<<"r_x"<<"\t"<<"Beta_x"<<"\t"<<"Alpha_x"<<"\t"<<"fitness"<<std::endl;
 		}
 
 		// Open GENE_GAIN_EVENTS_LOG
@@ -592,7 +592,7 @@ int main(int argc, char *argv[])
 				}
 				//If the user activated the option to get pangenome evolution feedbacks, save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG at each DT generations where DT is the time-step
 				if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
-					PANGENOMES_EVOLUTION_LOG <<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<(cell_it->gene_count())<<"\t"<<(r_prime*pow(cell_it->gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell_it->gene_count(),lambda_minus))<<"\t"<<pow(cell_it->gene_count(),lambda_plus)<<cell_it->fitness()<<std::endl;
+					PANGENOMES_EVOLUTION_LOG <<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<(cell_it->gene_count())<<"\t"<<(r_prime*pow(cell_it->gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell_it->gene_count(),lambda_minus))<<"\t"<<pow(cell_it->gene_count(),lambda_plus)<<"\t"<<cell_it->fitness()<<std::endl;
 				}
 			}
 
