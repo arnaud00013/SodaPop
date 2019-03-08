@@ -1,5 +1,6 @@
 //remarks; if no values in the field, leave empty
 org_id  2
+fitness  1
 mrate   2.5e-6
 //field, id
 G	0
