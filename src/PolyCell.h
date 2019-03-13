@@ -54,6 +54,7 @@ public:
     void dumpShort(std::fstream&);
     void dumpSeq(std::fstream&, int);
     void dumpParent(std::fstream&);
+    void dumpCellGeneContent(std::ofstream&,int);
     void PrintCell(int);
     
     int Na(){return Total_Na_;}

@@ -607,9 +607,7 @@ int main(int argc, char *argv[])
 				//If the user activated the option to get pangenome evolution feedbacks, save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG at each DT generations where DT is the time-step. Do the same for cell gene content log with the appropriated fields.
 				if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
 					PANGENOMES_EVOLUTION_LOG <<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<(cell_it->gene_count())<<"\t"<<(r_prime*pow(cell_it->gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell_it->gene_count(),lambda_minus))<<"\t"<<pow(cell_it->gene_count(),lambda_plus)<<"\t"<<cell_it->fitness()<<std::endl;
-					for(auto gene_it = cell_it->Gene_arr_.begin(); gene_it != cell_it->Gene_arr_.end(); ++gene_it){
-						CELL_GENE_CONTENT_LOG <<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<gene_it->num()<<std::endl;
-					}
+					cell_it->dumpCellGeneContent(CELL_GENE_CONTENT_LOG,GENERATION_CTR);
 				}
 			}
         	if(PolyCell::ff_ == 0) {
