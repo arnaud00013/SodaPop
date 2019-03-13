@@ -781,6 +781,7 @@ int main(int argc, char *argv[])
     MUTATIONLOG.close();
     if(simul_pangenomes_evolution && track_pangenomes_evolution){
 		PANGENOMES_EVOLUTION_LOG.close();
+		CELL_GENE_CONTENT_LOG.close();
 		GENE_GAIN_EVENTS_LOG.close();
 		GENE_LOSS_EVENTS_LOG.close();
     }
