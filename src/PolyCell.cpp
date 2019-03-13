@@ -169,26 +169,43 @@ void PolyCell::ranmut_Gene(std::ofstream& log,int ctr)
     int bp = (int) (3 * randomNumber());
 
     double wi = fitness();
+
+    int the_gene_id = -1;//initialization with -1
+	std::string the_gene_old_aa ="";
+	std::string the_gene_new_aa ="";
+
     if(fromS_)
     {
         if(useDist_)
         {
-            (*j).Mutate_Select_Dist(site,bp);
+            the_gene_id = j->num();
+            the_gene_old_aa =j->getAAresidueFromCodonSequence(j->getCodonSequence(site));
+        	(*j).Mutate_Select_Dist(site,bp);
+        	the_gene_new_aa =j->getAAresidueFromCodonSequence(j->getCodonSequence(site));
         }
         else
         {
-            mutation = j->Mutate_Select(site,bp);
+        	the_gene_id = j->num();
+			the_gene_old_aa =j->getAAresidueFromCodonSequence(j->getCodonSequence(site));
+        	mutation = j->Mutate_Select(site,bp);
+        	the_gene_new_aa =j->getAAresidueFromCodonSequence(j->getCodonSequence(site));
         }
     }
     else
     {
         if(useDist_)
         {
+        	the_gene_id = j->num();
+        	the_gene_old_aa =j->getAAresidueFromCodonSequence(j->getCodonSequence(site));
             (*j).Mutate_Stabil_Gaussian(site,bp);
+            the_gene_new_aa =j->getAAresidueFromCodonSequence(j->getCodonSequence(site));
         }
         else
         {
+        	the_gene_id = j->num();
+			the_gene_old_aa =j->getAAresidueFromCodonSequence(j->getCodonSequence(site));
             mutation = j->Mutate_Stabil(site,bp);
+            the_gene_new_aa =j->getAAresidueFromCodonSequence(j->getCodonSequence(site));
         }
     }
 
@@ -203,6 +220,7 @@ void PolyCell::ranmut_Gene(std::ofstream& log,int ctr)
     log << mutation << "\t";
     log << s << "\t";
     log << ctr << std::endl;
+    log<<this->barcode()<<"\t"<<the_gene_id<<"\t"<<the_gene_old_aa<<"\t"<<site<<"\t"<<the_gene_new_aa<<"\t"<<s<<"\t"<<ctr<<"\t"<<this->ID()<<std::endl;
 }
 
 void PolyCell::ranmut_Gene()

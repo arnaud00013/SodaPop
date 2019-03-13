@@ -428,3 +428,62 @@ void Gene::setCumulSumFitEffectMutCurrentGen(
 		double cumulSumFitEffectMutCurrentGen) {
 	cumul_sum_fit_effect_mut_current_gen = cumulSumFitEffectMutCurrentGen;
 }
+
+std::string Gene::getCodonSequence(const int i) {
+	// extract codon to be mutated
+	int cdn_ndx = (i%3);
+	int cdn_start = i - cdn_ndx;
+
+	// fetch current codon
+	std::string cdn_curr = nucseq_.substr(cdn_start, 3);
+	return cdn_curr;
+}
+
+std::string Gene::getAAresidueFromCodonSequence(const std::string& original_codon_seq) {
+	std::string p_codon_seq = original_codon_seq;
+	std::transform(p_codon_seq.begin(), p_codon_seq.end(), p_codon_seq.begin(), ::toupper);
+	if (p_codon_seq == "GCT" or p_codon_seq == "GCC" or p_codon_seq == "GCA" or p_codon_seq == "GCG"){
+		return "A";
+	} else if (p_codon_seq == "TGT" or p_codon_seq == "TGC"){
+		return "C";
+	} else if (p_codon_seq == "GAT" or p_codon_seq == "GAC"){
+		return "D";
+	} else if (p_codon_seq == "GAA" or p_codon_seq == "GAG"){
+		return "E";
+	} else if (p_codon_seq == "TTT" or p_codon_seq == "TTC"){
+		return "F";
+	} else if (p_codon_seq == "GGT" or p_codon_seq == "GGC" or p_codon_seq == "GGA" or p_codon_seq == "GGG"){
+		return "G";
+	} else if (p_codon_seq == "CAT" or p_codon_seq == "CAC"){
+		return "H";
+	} else if (p_codon_seq == "ATT" or p_codon_seq == "ATC" or p_codon_seq == "ATA"){
+		return "I";
+	} else if (p_codon_seq == "AAA" or p_codon_seq == "AAG"){
+		return "K";
+	} else if (p_codon_seq == "TTA" or p_codon_seq == "TTG" or p_codon_seq == "CTT" or p_codon_seq == "CTC" or p_codon_seq == "CTA" or p_codon_seq == "CTG"){
+		return "L";
+	} else if (p_codon_seq == "ATG"){
+		return "M";
+	} else if (p_codon_seq == "AAT" or p_codon_seq == "AAC"){
+		return "N";
+	} else if (p_codon_seq == "CCT" or p_codon_seq == "CCC" or p_codon_seq == "CCA" or p_codon_seq == "CCG"){
+		return "P";
+	} else if (p_codon_seq == "CAA" or p_codon_seq == "CAG"){
+		return "Q";
+	} else if (p_codon_seq == "AGA" or p_codon_seq == "AGG" or p_codon_seq == "CGT" or p_codon_seq == "CGC" or p_codon_seq == "CGA" or p_codon_seq == "CGG"){
+		return "R";
+	} else if (p_codon_seq == "AGT" or p_codon_seq == "AGC" or p_codon_seq == "TCT" or p_codon_seq == "TCC" or p_codon_seq == "TCA" or p_codon_seq == "TCG"){
+		return "S";
+	} else if (p_codon_seq == "ACT" or p_codon_seq == "ACC" or p_codon_seq == "ACA" or p_codon_seq == "ACG"){
+		return "T";
+	} else if (p_codon_seq == "GTT" or p_codon_seq == "GTC" or p_codon_seq == "GTA" or p_codon_seq == "GTG"){
+		return "V";
+	} else if (p_codon_seq == "TGG"){
+		return "W";
+	} else if (p_codon_seq == "TAT" or p_codon_seq == "TAC"){
+		return "Y";
+	} else {
+		return "STOP";
+	}
+
+}

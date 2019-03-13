@@ -369,7 +369,10 @@ int main(int argc, char *argv[])
         if ( !MUTATIONLOG.is_open() ) {
             std::cerr << "Mutation log file could not be opened";
             exit(1);
-        }
+        }else{
+			std::cout << "Opening Cell mutation log file..." << std::endl;
+			MUTATIONLOG <<"barcode"<<"\t"<<"gene_ID"<<"\t"<<"aa_before"<<"\t"<<"mutation_site"<<"\t"<<"aa_after"<<"\t"<<"selection_coeff"<<"\t"<<"Generation_ctr"<<"\t"<<"cell_ID"<<std::endl;
+		}
     }
 
     //create PANGENOMES_EVOLUTION_LOG, GENE_GAIN_EVENTS_LOG and GENE_LOSS_EVENTS_LOG files if the -V and -T command-line options are enabled

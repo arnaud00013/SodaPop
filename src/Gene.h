@@ -79,6 +79,8 @@ public:
     const void setCell(Cell*);
 	double getCumulSumFitEffectMutCurrentGen() const;
 	void setCumulSumFitEffectMutCurrentGen(double cumulSumFitEffectMutCurrentGen);
+	std::string getCodonSequence(const int i);
+	std::string getAAresidueFromCodonSequence(const std::string& original_codon_seq);
 
     private:
         int g_num_;     //numeric ID pointing to primordial gene
