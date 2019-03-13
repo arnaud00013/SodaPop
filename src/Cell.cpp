@@ -6,7 +6,7 @@ Cell::Cell():
     barcode_(getBarcode()),
     ID_(0),
     parent_(0),
-	accum_pev_fe(1),
+	accum_pev_fe(0),
     o_mrate_(0),
     c_mrate_(0),
     fitness_(0)
@@ -17,7 +17,7 @@ Cell::Cell():
 
 // Construct from cell file
 Cell::Cell(std::fstream & cell_in) {
-	accum_pev_fe = 1;
+	accum_pev_fe = 0;
     char buffer[140];
     Gene_L_.reserve(GENECOUNTMAX);
     Gene_arr_.reserve(GENECOUNTMAX);
@@ -86,7 +86,7 @@ Cell::Cell(std::fstream & IN,
     IN.read((char*)(&cell_id), sizeof(int));
     ID_ = cell_id;
     parent_ = 0;
-    accum_pev_fe = 1;
+    accum_pev_fe = 0;
 
     //read barcode
     int l;
@@ -172,9 +172,10 @@ int Cell::remove_rand_gene() {
 	// 2. Shuffle the vector of indices using the already instantiated rng
 	std::shuffle(indices.begin(), indices.end(), g_rng);
 	// 3. Take the last element as ID of the gene to be removed
-	int ID_removed_gene = indices.back();
+	int indice_removed_gene = indices.back();
+	int ID_removed_gene = (Gene_arr_.begin() + indice_removed_gene)->num();
 	// 4. Erase the gene from the vector. Note that the vector is automatically resized
-	Gene_arr_.erase(Gene_arr_.begin() + ID_removed_gene);
+	Gene_arr_.erase(Gene_arr_.begin() + indice_removed_gene);
 	//Update Gene_L_
 	this->Gene_L_.clear();
 	this->Gene_L_.reserve(this->gene_count()-1);
@@ -208,6 +209,16 @@ void Cell::print_summary_Gene_L_() {
 		std::cout<<*(it_cumul_length)<<std::endl;
 	}
 
+}
+
+double Cell::getCellCumulSumFitEffectMutCurrentGen() const {
+	return Cell_cumul_sum_fit_effect_mut_current_gen;
+}
+
+void Cell::setCellCumulSumFitEffectMutCurrentGen(
+		double cellCumulSumFitEffectMutCurrentGen) {
+	Cell_cumul_sum_fit_effect_mut_current_gen =
+			cellCumulSumFitEffectMutCurrentGen;
 }
 
 // // copy constructor
@@ -266,4 +277,19 @@ int Cell::total_mutations(const int & spec) {
     else if (spec == 1) return s;
     else return a;
 }
+
+//set to 0 the sum of fitness effect of the Cell and all its genes
+void Cell::initializeCellCumulSumFitEffectMutCurrentGen() {
+	this->setCellCumulSumFitEffectMutCurrentGen(0);
+	for(auto gene_it = this->Gene_arr_.begin(); gene_it != this->Gene_arr_.end(); gene_it++) {
+		gene_it->setCumulSumFitEffectMutCurrentGen(0);
+	}
+}
+//Calculate the sum of the Cell genes mutations fitness effect
+void Cell::updateCellCumulSumFitEffectMutCurrentGen() {
+	for(auto gene_it = this->Gene_arr_.begin(); gene_it != this->Gene_arr_.end(); gene_it++) {
+		this->setCellCumulSumFitEffectMutCurrentGen(this->getCellCumulSumFitEffectMutCurrentGen()+gene_it->getCumulSumFitEffectMutCurrentGen());
+	}
+}
+
 

@@ -264,6 +264,7 @@ double Gene::Mutate_Select_Dist(int i, int j)
     if(randomNumber() <= fNs){
         double s = RandomNormal();
         double wf = 1 + s;
+        this->setCumulSumFitEffectMutCurrentGen(this->getCumulSumFitEffectMutCurrentGen()+s);
         f_ *= wf;
         Na_ += 1;
         return s;
@@ -321,6 +322,7 @@ std::string Gene::Mutate_Select(int i, int j)
     else{// NON-SYNONYMOUS 
           // assign new fitness value
           double new_f = f_ + new_s;
+          this->setCumulSumFitEffectMutCurrentGen(this->getCumulSumFitEffectMutCurrentGen()+new_s);
           f_ = f_ * new_f;
           nucseq_.replace(cdn_start, 3, cdn_new);
           Na_ += 1;
@@ -416,4 +418,13 @@ Gene::Gene(const Gene& G, Cell *p_new_Cell) {
 	Na_ = G.Na_;
 	Ns_ = G.Ns_;
 	myCell_= p_new_Cell;
+}
+
+double Gene::getCumulSumFitEffectMutCurrentGen() const {
+	return cumul_sum_fit_effect_mut_current_gen;
+}
+
+void Gene::setCumulSumFitEffectMutCurrentGen(
+		double cumulSumFitEffectMutCurrentGen) {
+	cumul_sum_fit_effect_mut_current_gen = cumulSumFitEffectMutCurrentGen;
 }

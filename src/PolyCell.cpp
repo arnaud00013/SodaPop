@@ -37,6 +37,8 @@ void PolyCell::FillGene_L()
 void PolyCell::selectFitness()
 {
     switch(PolyCell::ff_){
+    	case 0: fit = &PolyCell::additive;
+            break;
         case 1: fit = &PolyCell::fold;
             break;
         case 2: fit = &PolyCell::flux;
@@ -118,7 +120,7 @@ double PolyCell::multiplicative()
     {
         fitness += gene_it->f()*gene_it->e();
     }
-    return ((fitness/gene_count()) * this->get_accumPevFe());
+    return (fitness/gene_count());
 }
 
 // NEUTRAL FITNESS FUNCTION
@@ -387,6 +389,11 @@ void PolyCell::dumpParent(std::fstream& OUT)
     uint32_t a;
     a = parent();
     OUT.write((char*)(&a),sizeof(a));
+}
+
+double PolyCell::additive() {
+	return this->fitness();
+
 }
 
 void PolyCell::UpdateNsNa()

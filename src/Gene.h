@@ -77,6 +77,8 @@ public:
 
     Cell *GetCell() const;
     const void setCell(Cell*);
+	double getCumulSumFitEffectMutCurrentGen() const;
+	void setCumulSumFitEffectMutCurrentGen(double cumulSumFitEffectMutCurrentGen);
 
     private:
         int g_num_;     //numeric ID pointing to primordial gene
@@ -91,7 +93,7 @@ public:
         double dg_;     //stability
         double f_;      //gene "fitness"
         double eff_;    //enzymatic efficiency
-
+        double cumul_sum_fit_effect_mut_current_gen; //the sum of the fitness effect of all mutations on the gene in the current generation. Should be reinitialized to 0 at each generation start
         double conc_;    //concentration
         double e_;       //essentiality: between 0 and 1, can be used as a coefficient
 

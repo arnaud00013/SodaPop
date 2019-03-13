@@ -292,7 +292,7 @@ int main(int argc, char *argv[])
         for(auto cell_it = Cell_arr.begin(); cell_it != Cell_arr.end(); ++cell_it){
             cell_it->ch_barcode(getBarcode());
         }
-        if(PolyCell::ff_ == 5){
+        if(PolyCell::ff_ == 5 || PolyCell::ff_ == 0){
             for(auto cell_it = Cell_arr.begin(); cell_it != Cell_arr.end(); ++cell_it){
                 cell_it->UpdateRates();
             }
@@ -309,7 +309,7 @@ int main(int argc, char *argv[])
             Cell_arr.emplace_back(startsnap, genesPath);
             count++;  
         }
-        if(PolyCell::ff_ == 5){
+        if(PolyCell::ff_ == 5 || PolyCell::ff_ == 0){
             for(auto cell_it = Cell_arr.begin(); cell_it != Cell_arr.end(); ++cell_it){
                 cell_it->UpdateRates();
             }
@@ -372,12 +372,12 @@ int main(int argc, char *argv[])
         }
     }
 
-    //create PANGENOMES_EVOLUTION_LOG, GENE_GAIN_EVENTS_LOG and GENE_LOSS_EVENTS_LOG files if the -V command-line option is enabled
+    //create PANGENOMES_EVOLUTION_LOG, GENE_GAIN_EVENTS_LOG and GENE_LOSS_EVENTS_LOG files if the -V and -T command-line options are enabled
     std::ofstream PANGENOMES_EVOLUTION_LOG;
     std::ofstream GENE_GAIN_EVENTS_LOG;
     std::ofstream GENE_LOSS_EVENTS_LOG;
-	if(simul_pangenomes_evolution){
-
+    std::ofstream CELL_GENE_CONTENT_LOG;
+	if(simul_pangenomes_evolution && track_pangenomes_evolution){
 		// Open PANGENOMES_EVOLUTION_LOG
 		sprintf(buffer, "out/%s/PANGENOMES_EVOLUTION_LOG.txt",outDir.c_str());
 		PANGENOMES_EVOLUTION_LOG.open(buffer);
@@ -411,6 +411,17 @@ int main(int argc, char *argv[])
             std::cout << "Opening gene loss events log ..." << std::endl;
 			//t_cell is the target cell
 			GENE_LOSS_EVENTS_LOG <<"loss_event_ID"<<"\t"<<"Generation_ctr"<<"\t"<<"t_cell_ID"<<"\t"<<"t_cell_barcode"<<"\t"<<"gene_ID"<<std::endl;
+		}
+
+		// Open CELL_GENE_CONTENT_LOG
+		sprintf(buffer, "out/%s/CELL_GENE_CONTENT_LOG.txt",outDir.c_str());
+		CELL_GENE_CONTENT_LOG.open(buffer);
+		if ( !CELL_GENE_CONTENT_LOG.is_open() ) {
+			std::cerr << "Cell gene content log file could not be opened";
+			exit(1);
+		}else{
+			std::cout << "Opening Cell gene content log ..." << std::endl;
+			CELL_GENE_CONTENT_LOG <<"Generation_ctr"<<"\t"<<"cell_ID"<<"\t"<<"gene_ID"<<std::endl;
 		}
 	}
 
@@ -504,7 +515,10 @@ int main(int argc, char *argv[])
 		else{
 			Cell_temp.reserve(N*3);
 		}
-
+		//If the user chose to simulate pangenome evolution select automatically the "additive" fitness function
+		if (simul_pangenomes_evolution){
+			PolyCell::ff_ = 0;
+		}
         bool more_than_one_sp = false;
 
         //If the user chose to simulate pangenome evolution
@@ -541,9 +555,10 @@ int main(int argc, char *argv[])
         {
         	//Gene gain through HGT between different species & Gene loss event(s)
         	if (simul_pangenomes_evolution){
-
+        		cell_it->set_accumPevFe(0);
         		nb_gain_to_sim = 0;
         		nb_loss_to_sim = 0;
+
         		// Poisson distribution for number of gain events in the current generation
 				std::poisson_distribution<> poissonGain(round((pow(cell_it->gene_count(),lambda_plus))));
 				// number of gain event is drawn from Poisson distribution with gain_rate as the expected number of gain events in the current generation
@@ -564,8 +579,7 @@ int main(int argc, char *argv[])
 						auto cell_two = Cell_arr.begin() + random_index_cell;
 						cell_two->select_random_gene();
 						int ID_gene_gained = cell_it->add_gene();
-						cell_it->set_accumPevFe(cell_it->get_accumPevFe() * (1 + a_for_s_x + (b_for_s_x * cell_it->gene_count())));
-						cell_it->ch_Fitness(cell_it->fitness() * cell_it->get_accumPevFe());
+						cell_it->set_accumPevFe(cell_it->get_accumPevFe() + (a_for_s_x + (b_for_s_x * cell_it->gene_count())));
 						gain_event_ctr++;
 						//If the user activated the option to get pangenome evolution feedbacks, save feedback for the gain event at each DT generations where DT is the time-step
 						if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
@@ -579,8 +593,7 @@ int main(int argc, char *argv[])
 						if (cell_it->gene_count()>1){
 							int ID_gene_removed = cell_it->remove_rand_gene(); //remove a random gene of *cell_it and return its ID
 							//s_loss(x) = -s_gain(x)
-							cell_it->set_accumPevFe(cell_it->get_accumPevFe() * (1 - a_for_s_x - (b_for_s_x * cell_it->gene_count())));
-							cell_it->ch_Fitness(cell_it->fitness() * cell_it->get_accumPevFe());
+							cell_it->set_accumPevFe(cell_it->get_accumPevFe() - (a_for_s_x - (b_for_s_x * cell_it->gene_count())));
 							loss_event_ctr++;
 							//If the user activated the option to get pangenome evolution feedbacks, save feedback for the loss event at each DT generations where DT is the time-step
 							if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
@@ -590,12 +603,18 @@ int main(int argc, char *argv[])
 					}
 
 				}
-				//If the user activated the option to get pangenome evolution feedbacks, save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG at each DT generations where DT is the time-step
+				cell_it->ch_Fitness(cell_it->fitness() + cell_it->get_accumPevFe());
+				//If the user activated the option to get pangenome evolution feedbacks, save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG at each DT generations where DT is the time-step. Do the same for cell gene content log with the appropriated fields.
 				if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
 					PANGENOMES_EVOLUTION_LOG <<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<(cell_it->gene_count())<<"\t"<<(r_prime*pow(cell_it->gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell_it->gene_count(),lambda_minus))<<"\t"<<pow(cell_it->gene_count(),lambda_plus)<<"\t"<<cell_it->fitness()<<std::endl;
+					for(auto gene_it = cell_it->Gene_arr_.begin(); gene_it != cell_it->Gene_arr_.end(); ++gene_it){
+						CELL_GENE_CONTENT_LOG <<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<gene_it->num()<<std::endl;
+					}
 				}
 			}
-
+        	if(PolyCell::ff_ == 0) {
+        		cell_it->initializeCellCumulSumFitEffectMutCurrentGen();
+        	}
         	// fitness of cell j with respect to sum of population fitness
             double relative_fitness = cell_it->fitness()/w_sum;
             // probability parameter of binomial distribution
@@ -644,8 +663,11 @@ int main(int argc, char *argv[])
                     it++;
                 }while(it < last);
             }
+            if(PolyCell::ff_ == 0) {
+				cell_it->updateCellCumulSumFitEffectMutCurrentGen();
+				cell_it->ch_Fitness(cell_it->fitness()+cell_it->getCellCumulSumFitEffectMutCurrentGen());
+            }
         }
-
         // if the population is below N
         // randomly draw from progeny to pad
         while(Cell_temp.size() < N){
@@ -759,9 +781,11 @@ int main(int argc, char *argv[])
     printProgress(GENERATION_CTR/GENERATION_MAX);
     std::cout << std::endl;
     MUTATIONLOG.close();
-    PANGENOMES_EVOLUTION_LOG.close();
-    GENE_GAIN_EVENTS_LOG.close();
-    GENE_LOSS_EVENTS_LOG.close();
+    if(simul_pangenomes_evolution && track_pangenomes_evolution){
+		PANGENOMES_EVOLUTION_LOG.close();
+		GENE_GAIN_EVENTS_LOG.close();
+		GENE_LOSS_EVENTS_LOG.close();
+    }
     std::cout << "Done." << std::endl;
     cmdlog << "Done." << std::endl;
     std::cout << "Total number of mutation events: " << MUTATION_CTR << std::endl;
