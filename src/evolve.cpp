@@ -371,7 +371,7 @@ int main(int argc, char *argv[])
             exit(1);
         }else{
 			std::cout << "Opening Cell mutation log file..." << std::endl;
-			MUTATIONLOG <<"barcode"<<"\t"<<"gene_ID"<<"\t"<<"aa_before"<<"\t"<<"mutation_site"<<"\t"<<"aa_after"<<"\t"<<"selection_coeff"<<"\t"<<"Generation_ctr"<<"\t"<<"cell_ID"<<std::endl;
+			MUTATIONLOG <<"barcode"<<"\t"<<"gene_ID"<<"\t"<<"aa_before"<<"\t"<<"mutation_site"<<"\t"<<"aa_after"<<"\t"<<"selection_coeff"<<"\t"<<"Generation_ctr"<<"\t"<<"cell_ID"<<"\t"<<"old_codon"<<"\t"<<"new_codon"<<std::endl;
 		}
     }
 

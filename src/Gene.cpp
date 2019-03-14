@@ -66,6 +66,7 @@ Gene::Gene(std::fstream& gene_in,Cell *parent)
     }
     Na_ = 0; //default
     Ns_ = 0;
+    this->cumul_sum_fit_effect_mut_current_gen = 0;
 }
 
 // // copy constructor
@@ -82,6 +83,7 @@ Gene::Gene(const Gene& G)
     eff_ = G.eff_;
     Na_ = G.Na_;
     Ns_ = G.Ns_;
+    this->cumul_sum_fit_effect_mut_current_gen = G.cumul_sum_fit_effect_mut_current_gen;
 }
 
 Gene::Gene()
@@ -97,6 +99,7 @@ Gene::Gene()
 	eff_ = 0;
 	Na_ = 0;
 	Ns_ = 0;
+	this->cumul_sum_fit_effect_mut_current_gen = 0;
 }
 
 Gene::~Gene()
@@ -126,6 +129,7 @@ Gene& Gene::operator=(const Gene& A)
         this->Na_ = A.Na_;
         this->Ns_ = A.Ns_;
         (this->nucseq_).assign(A.nucseq_);
+        this->cumul_sum_fit_effect_mut_current_gen = A.cumul_sum_fit_effect_mut_current_gen;
     }
     return *this;
 }
@@ -154,7 +158,7 @@ double Gene::Mutate_Stabil_Gaussian(int i, int j)
     }
     else{
         Ns_ += 1;
-        return 1;
+        return 0;
     }
 }
 
@@ -259,20 +263,37 @@ double Gene::Mutate_Select_Dist(int i, int j)
     	std::cerr << "ERROR: Mutation site out of bounds. Gene "<<this->num()<<" length is : "<<this->length()<<" but selected site is "<<i<< std::endl;
         exit(2);
     }       
-       
-    //non-synonymous mutation
-    if(randomNumber() <= fNs){
-        double s = RandomNormal();
-        double wf = 1 + s;
-        this->setCumulSumFitEffectMutCurrentGen(this->getCumulSumFitEffectMutCurrentGen()+s);
-        f_ *= wf;
-        Na_ += 1;
-        return s;
-    }
-    else{
-        Ns_ += 1;
-        return 1;
-    }
+    // extract codon to be mutated
+	int cdn_ndx = (i%3);
+	int cdn_start = i - cdn_ndx;
+
+
+	// fetch current codon
+	std::string cdn_curr = nucseq_.substr(cdn_start, 3);
+	std::string cdn_new = cdn_curr;
+	// get mutated bp
+	std::string bp = AdjacentBP( cdn_curr.substr(cdn_ndx, 1), j); //new BP
+	// mutate codon
+	cdn_new.replace(cdn_ndx, 1, bp);
+	// check for stop codon
+	cdn_new = n3_to_n3(cdn_new, cdn_curr, cdn_ndx);
+
+	std::string the_gene_old_aa =this->getAAresidueFromCodonSequence(cdn_curr);
+	std::string the_gene_new_aa =this->getAAresidueFromCodonSequence(cdn_new);
+
+	if(the_gene_new_aa==the_gene_old_aa){ //Non-synonymous
+		double s = RandomNormal();
+		double wf = 1 + s;
+		this->setCumulSumFitEffectMutCurrentGen(this->getCumulSumFitEffectMutCurrentGen()+s);
+		f_ *= wf;
+		nucseq_.replace(cdn_start, 3, cdn_new);
+		Na_ += 1;
+		return s;
+	}else{ //Synonymous
+		Ns_ += 1;
+		return 0;
+	}
+
 }
 
 /*
@@ -417,6 +438,7 @@ Gene::Gene(const Gene& G, Cell *p_new_Cell) {
 	eff_ = G.eff_;
 	Na_ = G.Na_;
 	Ns_ = G.Ns_;
+	this->cumul_sum_fit_effect_mut_current_gen =G.cumul_sum_fit_effect_mut_current_gen;
 	myCell_= p_new_Cell;
 }
 

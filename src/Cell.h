@@ -86,9 +86,6 @@ protected:
     // parent ID
     int parent_;
 
-    //Accumulation (sum) of pangenome evolution (gain or loss of genes) fitness effects for current generation. Should be reinitialized at 0 for each cell at each generation
-    double accum_pev_fe;
-
     // initial mutation rate
     double o_mrate_;
 
@@ -98,8 +95,12 @@ protected:
     // organismal fitness
     double fitness_;
 
-    double Cell_cumul_sum_fit_effect_mut_current_gen; //the sum of the fitness effect of all mutations in the cell genome in the current generation. Should be reinitialized to 0 at each generation start
 
+    //Accumulation (sum) of pangenome evolution (gain or loss of genes) fitness effects for current generation. Should be reinitialized at 0 for each cell at each generation
+    double accum_pev_fe;
+
+    //the sum of the fitness effect of all mutations in the cell genome in the current generation. Should be reinitialized to 0 at each generation start
+    double Cell_cumul_sum_fit_effect_mut_current_gen;
 
     //Array of genes
     std::vector <Gene> Gene_arr_;

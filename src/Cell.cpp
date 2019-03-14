@@ -6,18 +6,21 @@ Cell::Cell():
     barcode_(getBarcode()),
     ID_(0),
     parent_(0),
-	accum_pev_fe(0),
     o_mrate_(0),
     c_mrate_(0),
-    fitness_(0)
+    fitness_(0),
+	accum_pev_fe(0),
+	Cell_cumul_sum_fit_effect_mut_current_gen(0)
     {
         Gene_L_.reserve(GENECOUNTMAX);
         Gene_arr_.reserve(GENECOUNTMAX);
     }
 
+
 // Construct from cell file
 Cell::Cell(std::fstream & cell_in) {
 	accum_pev_fe = 0;
+	Cell_cumul_sum_fit_effect_mut_current_gen=0;
     char buffer[140];
     Gene_L_.reserve(GENECOUNTMAX);
     Gene_arr_.reserve(GENECOUNTMAX);
@@ -87,6 +90,7 @@ Cell::Cell(std::fstream & IN,
     ID_ = cell_id;
     parent_ = 0;
     accum_pev_fe = 0;
+    Cell_cumul_sum_fit_effect_mut_current_gen=0;
 
     //read barcode
     int l;
