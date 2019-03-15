@@ -66,7 +66,7 @@ Gene::Gene(std::fstream& gene_in,Cell *parent)
     }
     Na_ = 0; //default
     Ns_ = 0;
-    this->cumul_sum_fit_effect_mut_current_gen = 0;
+    this->s_current_mutation = 0;
 }
 
 // // copy constructor
@@ -83,7 +83,7 @@ Gene::Gene(const Gene& G)
     eff_ = G.eff_;
     Na_ = G.Na_;
     Ns_ = G.Ns_;
-    this->cumul_sum_fit_effect_mut_current_gen = G.cumul_sum_fit_effect_mut_current_gen;
+    this->s_current_mutation = G.s_current_mutation;
 }
 
 Gene::Gene()
@@ -99,7 +99,7 @@ Gene::Gene()
 	eff_ = 0;
 	Na_ = 0;
 	Ns_ = 0;
-	this->cumul_sum_fit_effect_mut_current_gen = 0;
+	this->s_current_mutation = 0;
 }
 
 Gene::~Gene()
@@ -129,7 +129,7 @@ Gene& Gene::operator=(const Gene& A)
         this->Na_ = A.Na_;
         this->Ns_ = A.Ns_;
         (this->nucseq_).assign(A.nucseq_);
-        this->cumul_sum_fit_effect_mut_current_gen = A.cumul_sum_fit_effect_mut_current_gen;
+        this->s_current_mutation = A.s_current_mutation;
     }
     return *this;
 }
@@ -262,7 +262,8 @@ double Gene::Mutate_Select_Dist(int i, int j)
     if(i>=ln_){
     	std::cerr << "ERROR: Mutation site out of bounds. Gene "<<this->num()<<" length is : "<<this->length()<<" but selected site is "<<i<< std::endl;
         exit(2);
-    }       
+    }
+    double s =0;//initialization of s
     // extract codon to be mutated
 	int cdn_ndx = (i%3);
 	int cdn_start = i - cdn_ndx;
@@ -284,16 +285,16 @@ double Gene::Mutate_Select_Dist(int i, int j)
 	if(the_gene_new_aa==the_gene_old_aa){ //Non-synonymous
 		double s = RandomNormal();
 		double wf = 1 + s;
-		this->setCumulSumFitEffectMutCurrentGen(this->getCumulSumFitEffectMutCurrentGen()+s);
+		this->setS_current_mutation(s);
 		f_ *= wf;
 		nucseq_.replace(cdn_start, 3, cdn_new);
 		Na_ += 1;
-		return s;
 	}else{ //Synonymous
+		s =0;
 		Ns_ += 1;
-		return 0;
+		this->setS_current_mutation(s);
 	}
-
+	return s;
 }
 
 /*
@@ -336,18 +337,20 @@ std::string Gene::Mutate_Select(int i, int j)
     // fetch primordial amino acid
 
     if( aa_curr == aa_new){//SILENT
-          nucseq_.replace(cdn_start, 3, cdn_new);
-          Ns_ += 1;
-          return "SILENT\tNA\tNA\tNA";
+    	new_s=0;
+        nucseq_.replace(cdn_start, 3, cdn_new);
+        Ns_ += 1;
+        this->setS_current_mutation(new_s);
+        return "SILENT\tNA\tNA\tNA";
     }
     else{// NON-SYNONYMOUS 
-          // assign new fitness value
-          double new_f = f_ + new_s;
-          this->setCumulSumFitEffectMutCurrentGen(this->getCumulSumFitEffectMutCurrentGen()+new_s);
-          f_ = f_ * new_f;
-          nucseq_.replace(cdn_start, 3, cdn_new);
-          Na_ += 1;
-          return mutation;
+		// assign new fitness value
+		double new_f = f_ + new_s;
+		this->setS_current_mutation(new_s);
+		f_ = f_ * new_f;
+		nucseq_.replace(cdn_start, 3, cdn_new);
+		Na_ += 1;
+		return mutation;
     }
 }
 
@@ -438,17 +441,17 @@ Gene::Gene(const Gene& G, Cell *p_new_Cell) {
 	eff_ = G.eff_;
 	Na_ = G.Na_;
 	Ns_ = G.Ns_;
-	this->cumul_sum_fit_effect_mut_current_gen =G.cumul_sum_fit_effect_mut_current_gen;
+	this->s_current_mutation =G.s_current_mutation;
 	myCell_= p_new_Cell;
 }
 
-double Gene::getCumulSumFitEffectMutCurrentGen() const {
-	return cumul_sum_fit_effect_mut_current_gen;
+double Gene::getS_current_mutation() const {
+	return s_current_mutation;
 }
 
-void Gene::setCumulSumFitEffectMutCurrentGen(
-		double cumulSumFitEffectMutCurrentGen) {
-	cumul_sum_fit_effect_mut_current_gen = cumulSumFitEffectMutCurrentGen;
+void Gene::setS_current_mutation(
+		double p_S_current_mutation) {
+	s_current_mutation = p_S_current_mutation;
 }
 
 std::string Gene::getCodonSequence(const int i) {

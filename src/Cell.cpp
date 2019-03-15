@@ -10,7 +10,7 @@ Cell::Cell():
     c_mrate_(0),
     fitness_(0),
 	accum_pev_fe(0),
-	Cell_cumul_sum_fit_effect_mut_current_gen(0)
+	sel_coeff_current_mutation(0)
     {
         Gene_L_.reserve(GENECOUNTMAX);
         Gene_arr_.reserve(GENECOUNTMAX);
@@ -20,7 +20,7 @@ Cell::Cell():
 // Construct from cell file
 Cell::Cell(std::fstream & cell_in) {
 	accum_pev_fe = 0;
-	Cell_cumul_sum_fit_effect_mut_current_gen=0;
+	sel_coeff_current_mutation=0;
     char buffer[140];
     Gene_L_.reserve(GENECOUNTMAX);
     Gene_arr_.reserve(GENECOUNTMAX);
@@ -90,7 +90,7 @@ Cell::Cell(std::fstream & IN,
     ID_ = cell_id;
     parent_ = 0;
     accum_pev_fe = 0;
-    Cell_cumul_sum_fit_effect_mut_current_gen=0;
+    sel_coeff_current_mutation=0;
 
     //read barcode
     int l;
@@ -169,7 +169,7 @@ void Cell::select_random_gene() {
 	Cell::selected_gene =  Gene(*(this->Gene_arr_.begin() + ID_random_gene),this);
 }
 
-int Cell::remove_rand_gene() {
+int Cell::remove_rand_gene(const int & a_for_s_x,const int & b_for_s_x) {
 	// 1. Create a temporary vector of indices corresponding to the actual gene objects
 	std::vector<int> indices(Gene_arr_.size());
 	std::iota(indices.begin(), indices.end(), 0);
@@ -184,12 +184,13 @@ int Cell::remove_rand_gene() {
 	this->Gene_L_.clear();
 	this->Gene_L_.reserve(this->gene_count()-1);
 	this->FillGene_L();
-
+	//s_loss(x) = -s_gain(x)
+	this->set_accumPevFe(this->get_accumPevFe() - (a_for_s_x - (b_for_s_x * this->gene_count())));
 	return ID_removed_gene;
 }
 
 //Add the selected gene saved in the static memeber selected_gene in the present cell
-int Cell::add_gene() {
+int Cell::add_gene(const int & a_for_s_x,const int & b_for_s_x) {
 	Cell::selected_gene.setCell(this);
 	Gene_arr_.push_back(Cell::selected_gene);
 	//std::cout<<"Gain event : Cell"<<this->ID()<<" new gene number is "<<n_G.num()<<" and has length : "<<n_G.length()<<std::endl;
@@ -197,7 +198,7 @@ int Cell::add_gene() {
 	this->Gene_L_.clear();
 	this->Gene_L_.reserve(this->gene_count()+1);
 	this->FillGene_L();
-
+	this->set_accumPevFe(this->get_accumPevFe() + (a_for_s_x + (b_for_s_x * this->gene_count())));
 	return Cell::selected_gene.num();
 }
 
@@ -215,15 +216,6 @@ void Cell::print_summary_Gene_L_() {
 
 }
 
-double Cell::getCellCumulSumFitEffectMutCurrentGen() const {
-	return Cell_cumul_sum_fit_effect_mut_current_gen;
-}
-
-void Cell::setCellCumulSumFitEffectMutCurrentGen(
-		double cellCumulSumFitEffectMutCurrentGen) {
-	Cell_cumul_sum_fit_effect_mut_current_gen =
-			cellCumulSumFitEffectMutCurrentGen;
-}
 
 // // copy constructor
 // Cell::Cell(const Cell& C)
@@ -282,18 +274,14 @@ int Cell::total_mutations(const int & spec) {
     else return a;
 }
 
-//set to 0 the sum of fitness effect of the Cell and all its genes
-void Cell::initializeCellCumulSumFitEffectMutCurrentGen() {
-	this->setCellCumulSumFitEffectMutCurrentGen(0);
-	for(auto gene_it = this->Gene_arr_.begin(); gene_it != this->Gene_arr_.end(); gene_it++) {
-		gene_it->setCumulSumFitEffectMutCurrentGen(0);
-	}
-}
-//Calculate the sum of the Cell genes mutations fitness effect
-void Cell::updateCellCumulSumFitEffectMutCurrentGen() {
-	for(auto gene_it = this->Gene_arr_.begin(); gene_it != this->Gene_arr_.end(); gene_it++) {
-		this->setCellCumulSumFitEffectMutCurrentGen(this->getCellCumulSumFitEffectMutCurrentGen()+gene_it->getCumulSumFitEffectMutCurrentGen());
-	}
+double Cell::getSelCoeffCurrentMutation() const {
+	return sel_coeff_current_mutation;
 }
 
+void Cell::setSelCoeffCurrentMutation(double selCoeffCurrentMutation) {
+	sel_coeff_current_mutation = selCoeffCurrentMutation;
+}
 
+void Cell::initialize_cumul_pev_effect() {
+	this->set_accumPevFe(0);
+}

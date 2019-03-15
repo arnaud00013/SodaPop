@@ -50,8 +50,8 @@ public:
     const std::string barcode() {return barcode_;}
     void select_random_gene();
     static Gene selected_gene;
-    int add_gene();
-    int remove_rand_gene();
+    int add_gene(const int &,const int &);
+    int remove_rand_gene(const int &,const int &);
     void print_summary_Gene_arr_();
     void print_summary_Gene_L_();
 
@@ -71,10 +71,9 @@ public:
 		accum_pev_fe = accumPevFe;
 	}
 
-	double getCellCumulSumFitEffectMutCurrentGen() const;
-	void setCellCumulSumFitEffectMutCurrentGen(double cellCumulSumFitEffectMutCurrentGen);
-	void updateCellCumulSumFitEffectMutCurrentGen();
-	void initializeCellCumulSumFitEffectMutCurrentGen();
+	double getSelCoeffCurrentMutation() const;
+	void setSelCoeffCurrentMutation(double selCoeffCurrentMutation);
+	void initialize_cumul_pev_effect();
 
 protected:
     // organism barcode
@@ -96,11 +95,11 @@ protected:
     double fitness_;
 
 
-    //Accumulation (sum) of pangenome evolution (gain or loss of genes) fitness effects for current generation. Should be reinitialized at 0 for each cell at each generation
+    //Accumulation (sum) of pangenome evolution (gain or loss of genes) fitness effects for current generation. Should be reinitialized at 0 for each cell at each generation in evolve.cpp
     double accum_pev_fe;
 
-    //the sum of the fitness effect of all mutations in the cell genome in the current generation. Should be reinitialized to 0 at each generation start
-    double Cell_cumul_sum_fit_effect_mut_current_gen;
+    //used to save the selection coefficient of a mutation event
+    double sel_coeff_current_mutation;
 
     //Array of genes
     std::vector <Gene> Gene_arr_;

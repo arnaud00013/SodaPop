@@ -77,8 +77,8 @@ public:
 
     Cell *GetCell() const;
     const void setCell(Cell*);
-	double getCumulSumFitEffectMutCurrentGen() const;
-	void setCumulSumFitEffectMutCurrentGen(double cumulSumFitEffectMutCurrentGen);
+	double getS_current_mutation() const;
+	void setS_current_mutation(double cumulSumFitEffectMutCurrentGen);
 	std::string getCodonSequence(const int i);
 	std::string getAAresidueFromCodonSequence(const std::string& original_codon_seq);
 
@@ -95,7 +95,7 @@ public:
         double dg_;     //stability
         double f_;      //gene "fitness"
         double eff_;    //enzymatic efficiency
-        double cumul_sum_fit_effect_mut_current_gen; //the sum of the fitness effect of all mutations on the gene in the current generation. Should be reinitialized to 0 at each generation start
+        double s_current_mutation; //used to save the selection coefficient of a mutation event
         double conc_;    //concentration
         double e_;       //essentiality: between 0 and 1, can be used as a coefficient
 

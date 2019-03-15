@@ -184,6 +184,7 @@ void PolyCell::ranmut_Gene(std::ofstream& log,int ctr)
             the_gene_old_codon =j->getCodonSequence(site);
             the_gene_old_aa =j->getAAresidueFromCodonSequence(the_gene_old_codon);
         	(*j).Mutate_Select_Dist(site,bp);
+        	this->setSelCoeffCurrentMutation(j->getS_current_mutation());
         	the_gene_new_codon =j->getCodonSequence(site);
         	the_gene_new_aa =j->getAAresidueFromCodonSequence(the_gene_new_codon);
 
@@ -194,6 +195,7 @@ void PolyCell::ranmut_Gene(std::ofstream& log,int ctr)
 			the_gene_old_codon =j->getCodonSequence(site);
 			the_gene_old_aa =j->getAAresidueFromCodonSequence(the_gene_old_codon);
         	mutation = j->Mutate_Select(site,bp);
+        	this->setSelCoeffCurrentMutation(j->getS_current_mutation());
         	the_gene_new_codon =j->getCodonSequence(site);
 			the_gene_new_aa =j->getAAresidueFromCodonSequence(the_gene_new_codon);
         }
@@ -225,7 +227,6 @@ void PolyCell::ranmut_Gene(std::ofstream& log,int ctr)
     double s = wf - wi;
 
     // save beneficial mutations to log
-    // we could save all mutations with abs(s) >= some value x
     log<<this->barcode()<<"\t"<<the_gene_id<<"\t"<<the_gene_old_aa<<"\t"<<site<<"\t"<<the_gene_new_aa<<"\t"<<s<<"\t"<<ctr<<"\t"<<this->ID()<<"\t"<<the_gene_old_codon<<"\t"<<the_gene_new_codon<<std::endl;
 }
 
@@ -416,6 +417,7 @@ void PolyCell::dumpParent(std::fstream& OUT)
 }
 
 double PolyCell::additive() {
+	this->ch_Fitness(this->fitness()+this->getSelCoeffCurrentMutation());
 	return this->fitness();
 
 }

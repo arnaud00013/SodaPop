@@ -558,7 +558,7 @@ int main(int argc, char *argv[])
         {
         	//Gene gain through HGT between different species & Gene loss event(s)
         	if (simul_pangenomes_evolution){
-        		cell_it->set_accumPevFe(0);
+        		cell_it->initialize_cumul_pev_effect();//at every generation, the current cell pangenome evolution effect is reinitialized to 0 before the gain and loss events!
         		nb_gain_to_sim = 0;
         		nb_loss_to_sim = 0;
 
@@ -581,8 +581,7 @@ int main(int argc, char *argv[])
 						int random_index_cell = uniff_dist(g_rng);
 						auto cell_two = Cell_arr.begin() + random_index_cell;
 						cell_two->select_random_gene();
-						int ID_gene_gained = cell_it->add_gene();
-						cell_it->set_accumPevFe(cell_it->get_accumPevFe() + (a_for_s_x + (b_for_s_x * cell_it->gene_count())));
+						int ID_gene_gained = cell_it->add_gene(a_for_s_x,b_for_s_x);//this command updates automatically Cell gene array and fitness after gain!
 						gain_event_ctr++;
 						//If the user activated the option to get pangenome evolution feedbacks, save feedback for the gain event at each DT generations where DT is the time-step
 						if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
@@ -594,9 +593,7 @@ int main(int argc, char *argv[])
 					//for each loss event
 					for (int num_loss_event_current_gen = 1; num_loss_event_current_gen < nb_loss_to_sim + 1;num_loss_event_current_gen++){
 						if (cell_it->gene_count()>1){
-							int ID_gene_removed = cell_it->remove_rand_gene(); //remove a random gene of *cell_it and return its ID
-							//s_loss(x) = -s_gain(x)
-							cell_it->set_accumPevFe(cell_it->get_accumPevFe() - (a_for_s_x - (b_for_s_x * cell_it->gene_count())));
+							int ID_gene_removed = cell_it->remove_rand_gene(a_for_s_x,b_for_s_x); ////this command updates automatically Cell gene array and fitness after loss!
 							loss_event_ctr++;
 							//If the user activated the option to get pangenome evolution feedbacks, save feedback for the loss event at each DT generations where DT is the time-step
 							if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
@@ -613,9 +610,7 @@ int main(int argc, char *argv[])
 					cell_it->dumpCellGeneContent(CELL_GENE_CONTENT_LOG,GENERATION_CTR);
 				}
 			}
-        	if(PolyCell::ff_ == 0) {
-        		cell_it->initializeCellCumulSumFitEffectMutCurrentGen();
-        	}
+
         	// fitness of cell j with respect to sum of population fitness
             double relative_fitness = cell_it->fitness()/w_sum;
             // probability parameter of binomial distribution
@@ -663,10 +658,6 @@ int main(int argc, char *argv[])
                     }
                     it++;
                 }while(it < last);
-            }
-            if(PolyCell::ff_ == 0) {
-				cell_it->updateCellCumulSumFitEffectMutCurrentGen();
-				cell_it->ch_Fitness(cell_it->fitness()+cell_it->getCellCumulSumFitEffectMutCurrentGen());
             }
         }
         // if the population is below N
