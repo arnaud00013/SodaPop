@@ -9,7 +9,7 @@ Cell::Cell():
     o_mrate_(0),
     c_mrate_(0),
     fitness_(0),
-	accum_pev_fe(0),
+	pev_fe(0),
 	sel_coeff_current_mutation(0)
     {
         Gene_L_.reserve(GENECOUNTMAX);
@@ -19,7 +19,7 @@ Cell::Cell():
 
 // Construct from cell file
 Cell::Cell(std::fstream & cell_in) {
-	accum_pev_fe = 0;
+	pev_fe = 0;
 	sel_coeff_current_mutation=0;
     char buffer[140];
     Gene_L_.reserve(GENECOUNTMAX);
@@ -89,7 +89,7 @@ Cell::Cell(std::fstream & IN,
     IN.read((char*)(&cell_id), sizeof(int));
     ID_ = cell_id;
     parent_ = 0;
-    accum_pev_fe = 0;
+    pev_fe = 0;
     sel_coeff_current_mutation=0;
 
     //read barcode
@@ -185,7 +185,8 @@ int Cell::remove_rand_gene(const int & a_for_s_x,const int & b_for_s_x) {
 	this->Gene_L_.reserve(this->gene_count()-1);
 	this->FillGene_L();
 	//s_loss(x) = -s_gain(x)
-	this->set_accumPevFe(this->get_accumPevFe() - (a_for_s_x - (b_for_s_x * this->gene_count())));
+	this->set_PevFe(-1*(a_for_s_x + (b_for_s_x * this->gene_count())));
+	this->ch_Fitness(this->fitness() *(1+this->get_PevFe()));
 	return ID_removed_gene;
 }
 
@@ -198,7 +199,8 @@ int Cell::add_gene(const int & a_for_s_x,const int & b_for_s_x) {
 	this->Gene_L_.clear();
 	this->Gene_L_.reserve(this->gene_count()+1);
 	this->FillGene_L();
-	this->set_accumPevFe(this->get_accumPevFe() + (a_for_s_x + (b_for_s_x * this->gene_count())));
+	this->set_PevFe(a_for_s_x + (b_for_s_x * this->gene_count()));
+	this->ch_Fitness(this->fitness() *(1+this->get_PevFe()));
 	return Cell::selected_gene.num();
 }
 
@@ -283,5 +285,5 @@ void Cell::setSelCoeffCurrentMutation(double selCoeffCurrentMutation) {
 }
 
 void Cell::initialize_cumul_pev_effect() {
-	this->set_accumPevFe(0);
+	this->set_PevFe(0);
 }

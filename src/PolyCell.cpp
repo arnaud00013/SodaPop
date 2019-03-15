@@ -37,7 +37,7 @@ void PolyCell::FillGene_L()
 void PolyCell::selectFitness()
 {
     switch(PolyCell::ff_){
-    	case 0: fit = &PolyCell::additive;
+    	case 0: fit = &PolyCell::multiplicative_without_genes_fit_mean;
             break;
         case 1: fit = &PolyCell::fold;
             break;
@@ -416,8 +416,8 @@ void PolyCell::dumpParent(std::fstream& OUT)
     OUT.write((char*)(&a),sizeof(a));
 }
 
-double PolyCell::additive() {
-	this->ch_Fitness(this->fitness()+this->getSelCoeffCurrentMutation());
+double PolyCell::multiplicative_without_genes_fit_mean() {
+	this->ch_Fitness(this->fitness()*(1+this->getSelCoeffCurrentMutation()));
 	return this->fitness();
 
 }

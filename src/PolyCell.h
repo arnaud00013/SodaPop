@@ -40,7 +40,7 @@ public:
     double toxicity();
     double metabolicOutput();
     double multiplicative();
-    double additive();
+    double multiplicative_without_genes_fit_mean();
     double neutral();
     double noMut();
     double fold();

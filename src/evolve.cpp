@@ -558,7 +558,6 @@ int main(int argc, char *argv[])
         {
         	//Gene gain through HGT between different species & Gene loss event(s)
         	if (simul_pangenomes_evolution){
-        		cell_it->initialize_cumul_pev_effect();//at every generation, the current cell pangenome evolution effect is reinitialized to 0 before the gain and loss events!
         		nb_gain_to_sim = 0;
         		nb_loss_to_sim = 0;
 
@@ -603,7 +602,6 @@ int main(int argc, char *argv[])
 					}
 
 				}
-				cell_it->ch_Fitness(cell_it->fitness() + cell_it->get_accumPevFe());
 				//If the user activated the option to get pangenome evolution feedbacks, save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG at each DT generations where DT is the time-step. Do the same for cell gene content log with the appropriated fields.
 				if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
 					PANGENOMES_EVOLUTION_LOG <<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<(cell_it->gene_count())<<"\t"<<(r_prime*pow(cell_it->gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell_it->gene_count(),lambda_minus))<<"\t"<<pow(cell_it->gene_count(),lambda_plus)<<"\t"<<cell_it->fitness()<<std::endl;

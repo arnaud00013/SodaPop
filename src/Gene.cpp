@@ -283,12 +283,22 @@ double Gene::Mutate_Select_Dist(int i, int j)
 	std::string the_gene_new_aa =this->getAAresidueFromCodonSequence(cdn_new);
 
 	if(the_gene_new_aa==the_gene_old_aa){ //Non-synonymous
-		double s = RandomNormal();
-		double wf = 1 + s;
-		this->setS_current_mutation(s);
-		f_ *= wf;
-		nucseq_.replace(cdn_start, 3, cdn_new);
-		Na_ += 1;
+		if (randomNumber()<0.7){
+			double s = RandomNormal(); //little fitness effect (around neutral) represents 70% of the mutation fitness distribution
+			double wf = 1 + s;
+			this->setS_current_mutation(s);
+			f_ *= wf;
+			nucseq_.replace(cdn_start, 3, cdn_new);
+			Na_ += 1;
+		}else{
+			double s = -1; //lethal mutations represents the rest of the mutation fitness distribution
+			double wf = 1 + s;
+			this->setS_current_mutation(s);
+			f_ *= wf;
+			nucseq_.replace(cdn_start, 3, cdn_new);
+			Na_ += 1;
+		}
+
 	}else{ //Synonymous
 		s =0;
 		Ns_ += 1;

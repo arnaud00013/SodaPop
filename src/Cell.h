@@ -63,12 +63,12 @@ public:
     void ch_Fitness(double f){fitness_ = f;}
     const double fitness();
 
-	double get_accumPevFe() const {
-		return accum_pev_fe;
+	double get_PevFe() const {
+		return pev_fe;
 	}
 
-	void set_accumPevFe(double accumPevFe) {
-		accum_pev_fe = accumPevFe;
+	void set_PevFe(double PevFe) {
+		pev_fe = PevFe;
 	}
 
 	double getSelCoeffCurrentMutation() const;
@@ -95,8 +95,8 @@ protected:
     double fitness_;
 
 
-    //Accumulation (sum) of pangenome evolution (gain or loss of genes) fitness effects for current generation. Should be reinitialized at 0 for each cell at each generation in evolve.cpp
-    double accum_pev_fe;
+    //Pangenome evolution event (gain or loss of genes) fitness effect
+    double pev_fe;
 
     //used to save the selection coefficient of a mutation event
     double sel_coeff_current_mutation;
