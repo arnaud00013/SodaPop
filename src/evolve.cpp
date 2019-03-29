@@ -424,7 +424,7 @@ int main(int argc, char *argv[])
 			exit(1);
 		}else{
 			std::cout << "Opening Cell gene content log ..." << std::endl;
-			CELL_GENE_CONTENT_LOG <<"Generation_ctr"<<"\t"<<"cell_ID"<<"\t"<<"gene_ID"<<std::endl;
+			CELL_GENE_CONTENT_LOG <<"Generation_ctr"<<"\t"<<"cell_ID"<<"\t"<<"gene_ID"<<"\t"<<"nucl_sequence"<<std::endl;
 		}
 	}
 

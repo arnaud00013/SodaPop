@@ -424,7 +424,7 @@ double PolyCell::multiplicative_without_genes_fit_mean() {
 
 void PolyCell::dumpCellGeneContent(std::ofstream& OUT, int GEN_CTR) {
 	for(auto gene_it = this->Gene_arr_.begin(); gene_it != this->Gene_arr_.end(); ++gene_it){
-		OUT <<GEN_CTR<<"\t"<<this->ID()<<"\t"<<gene_it->num()<<std::endl;
+		OUT <<GEN_CTR<<"\t"<<this->ID()<<"\t"<<gene_it->num()<<"\t"<<gene_it->nseq()<<std::endl;
 	}
 }
 
