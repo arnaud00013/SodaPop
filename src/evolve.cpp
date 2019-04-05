@@ -583,7 +583,7 @@ int main(int argc, char *argv[])
 						int ID_gene_gained = cell_it->add_gene(a_for_s_x,b_for_s_x);//this command updates automatically Cell gene array and fitness after gain!
 						gain_event_ctr++;
 						//If the user activated the option to get pangenome evolution feedbacks, save feedback for the gain event at each DT generations where DT is the time-step
-						if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
+						if (track_pangenomes_evolution && (((GENERATION_CTR % DT) == 0) || GENERATION_CTR==1)){
 							GENE_GAIN_EVENTS_LOG <<gain_event_ctr<<"\t"<<GENERATION_CTR<<"\t"<<cell_two->ID()<<"\t"<<cell_two->barcode()<<"\t"<<cell_it->ID()<<"\t"<<cell_it->barcode()<<"\t"<<ID_gene_gained<<std::endl;
 						}
 					}
@@ -595,7 +595,7 @@ int main(int argc, char *argv[])
 							int ID_gene_removed = cell_it->remove_rand_gene(a_for_s_x,b_for_s_x); ////this command updates automatically Cell gene array and fitness after loss!
 							loss_event_ctr++;
 							//If the user activated the option to get pangenome evolution feedbacks, save feedback for the loss event at each DT generations where DT is the time-step
-							if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
+							if (track_pangenomes_evolution && (((GENERATION_CTR % DT) == 0) || GENERATION_CTR==1)){
 								GENE_LOSS_EVENTS_LOG <<loss_event_ctr<<"\t"<<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<cell_it->barcode()<<"\t"<<ID_gene_removed<<std::endl;
 							}
 						}
@@ -603,7 +603,7 @@ int main(int argc, char *argv[])
 
 				}
 				//If the user activated the option to get pangenome evolution feedbacks, save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG at each DT generations where DT is the time-step. Do the same for cell gene content log with the appropriated fields.
-				if (track_pangenomes_evolution && ((GENERATION_CTR % DT) == 0)){
+				if (track_pangenomes_evolution && (((GENERATION_CTR % DT) == 0) || GENERATION_CTR==1)){
 					PANGENOMES_EVOLUTION_LOG <<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<(cell_it->gene_count())<<"\t"<<(r_prime*pow(cell_it->gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell_it->gene_count(),lambda_minus))<<"\t"<<pow(cell_it->gene_count(),lambda_plus)<<"\t"<<cell_it->fitness()<<std::endl;
 					cell_it->dumpCellGeneContent(CELL_GENE_CONTENT_LOG,GENERATION_CTR);
 				}
