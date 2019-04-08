@@ -694,8 +694,10 @@ int main(int argc, char *argv[])
             if(current > fittest) fittest = current;
             cell_it->UpdateNsNa();
         }
+
         //normalize by fittest individual to prevent overflow
-        if(inputType == "s"){
+        if(inputType == "s" && PolyCell::ff_ == 5){
+
             w_sum = 0;
             for(auto cell_it = Cell_arr.begin(); cell_it != Cell_arr.end(); ++cell_it){
                 w_sum += cell_it->normalizeFit(fittest);
