@@ -33,11 +33,13 @@ int main(int argc, char *argv[])
     int nb_loss_to_sim = 0;
     int gain_event_ctr = 0;
     int loss_event_ctr = 0;
+    int total_nb_event_pev_to_sim = 0;
     double lambda_plus = 0;
     double lambda_minus = 0;
     double r_prime = 0;
     double a_for_s_x = 0;
     double b_for_s_x = 0;
+    double ratio_gain_current_gen = 0;
     double avg_DG = 0;
     unsigned int N = 1;
     int DT = 1;
@@ -560,21 +562,17 @@ int main(int argc, char *argv[])
         	if (simul_pangenomes_evolution){
         		nb_gain_to_sim = 0;
         		nb_loss_to_sim = 0;
+				// number of gain event
+				nb_gain_to_sim = round((pow(cell_it->gene_count(),lambda_plus)));
+				// number of loss event
+				nb_loss_to_sim = round((r_prime*pow(cell_it->gene_count(),lambda_minus)));
+				//Total number of pangenome evolution (gain and loss) events to simulate in the current generation
+				total_nb_event_pev_to_sim = nb_gain_to_sim + nb_loss_to_sim;
 
-        		// Poisson distribution for number of gain events in the current generation
-				std::poisson_distribution<> poissonGain(round((pow(cell_it->gene_count(),lambda_plus))));
-				// number of gain event is drawn from Poisson distribution with gain_rate as the expected number of gain events in the current generation
-				nb_gain_to_sim = round(poissonGain(g_rng));
-				// binomial distribution for loss
-
-				// Poisson distribution for number of loss events in the current generation
-				std::poisson_distribution<> poissonLoss(round((r_prime*pow(cell_it->gene_count(),lambda_minus))));
-				// number of loss event is drawn from Poisson distribution with loss_rate as the expected number of loss events in the current generation
-				nb_loss_to_sim = round(poissonLoss(g_rng));
-
-				if (nb_gain_to_sim > 0){
-					//for each gain event
-					for (int num_gain_event_current_gen = 1; num_gain_event_current_gen < nb_gain_to_sim + 1;num_gain_event_current_gen++){
+				//Simulation of gene gain and gene loss events
+				ratio_gain_current_gen = nb_gain_to_sim / (nb_gain_to_sim + nb_loss_to_sim);
+				for(int i=0;i<total_nb_event_pev_to_sim;i++){
+					if (randomNumber() <= ratio_gain_current_gen && (nb_gain_to_sim>0)){
 						//choose random cell from which the gained gene will come (DON'T SHUFFLE Cell_arr here because you iterate through it)
 						std::uniform_int_distribution<int> uniff_dist(0, Cell_arr.size()-1);
 						int random_index_cell = uniff_dist(g_rng);
@@ -586,22 +584,20 @@ int main(int argc, char *argv[])
 						if (track_pangenomes_evolution && (((GENERATION_CTR % DT) == 0) || GENERATION_CTR==1)){
 							GENE_GAIN_EVENTS_LOG <<gain_event_ctr<<"\t"<<GENERATION_CTR<<"\t"<<cell_two->ID()<<"\t"<<cell_two->barcode()<<"\t"<<cell_it->ID()<<"\t"<<cell_it->barcode()<<"\t"<<ID_gene_gained<<std::endl;
 						}
-					}
-				}
-				if (nb_loss_to_sim > 0){
-					//for each loss event
-					for (int num_loss_event_current_gen = 1; num_loss_event_current_gen < nb_loss_to_sim + 1;num_loss_event_current_gen++){
-						if (cell_it->gene_count()>1){
-							int ID_gene_removed = cell_it->remove_rand_gene(a_for_s_x,b_for_s_x); ////this command updates automatically Cell gene array and fitness after loss!
-							loss_event_ctr++;
-							//If the user activated the option to get pangenome evolution feedbacks, save feedback for the loss event at each DT generations where DT is the time-step
-							if (track_pangenomes_evolution && (((GENERATION_CTR % DT) == 0) || GENERATION_CTR==1)){
-								GENE_LOSS_EVENTS_LOG <<loss_event_ctr<<"\t"<<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<cell_it->barcode()<<"\t"<<ID_gene_removed<<std::endl;
+					}else{
+						if (nb_loss_to_sim > 0){
+							if (cell_it->gene_count()>1){
+								int ID_gene_removed = cell_it->remove_rand_gene(a_for_s_x,b_for_s_x); ////this command updates automatically Cell gene array and fitness after loss!
+								loss_event_ctr++;
+								//If the user activated the option to get pangenome evolution feedbacks, save feedback for the loss event at each DT generations where DT is the time-step
+								if (track_pangenomes_evolution && (((GENERATION_CTR % DT) == 0) || GENERATION_CTR==1)){
+									GENE_LOSS_EVENTS_LOG <<loss_event_ctr<<"\t"<<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<cell_it->barcode()<<"\t"<<ID_gene_removed<<std::endl;
+								}
 							}
 						}
 					}
-
 				}
+
 				//If the user activated the option to get pangenome evolution feedbacks, save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG at each DT generations where DT is the time-step. Do the same for cell gene content log with the appropriated fields.
 				if (track_pangenomes_evolution && (((GENERATION_CTR % DT) == 0) || GENERATION_CTR==1)){
 					PANGENOMES_EVOLUTION_LOG <<GENERATION_CTR<<"\t"<<cell_it->ID()<<"\t"<<(cell_it->gene_count())<<"\t"<<(r_prime*pow(cell_it->gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell_it->gene_count(),lambda_minus))<<"\t"<<pow(cell_it->gene_count(),lambda_plus)<<"\t"<<cell_it->fitness()<<std::endl;
