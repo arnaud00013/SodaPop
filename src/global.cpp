@@ -1,27 +1,17 @@
 #include "global.h"
 
 VectStr PrimordialAASeq;
-double avg_DG = 0;
+double fold_DG = 0;
+double bind_DG = 0;
 
-const double ddG_min = -10;
-const double ddG_max = 99;
-const double CONC_MAX = 1e15;
-const double kT = 0.5922; //defines the energy units
-const double COST = 1e-4; // misfolding cost, see Geiler-Samerotte et al. 2011
-const double fNs = 0.775956284; //fraction of non-synonymous substitutions in a typical protein
+int Total_Cell_Count = 0;
+int dummy = 0;
+double frame_time = 0;
+std::string outPath;
+char buffer[200];
 
-// exponent values are precalculated to be used readily
-const double DDG_min = exp(-1*(ddG_min)/kT);
-const double DDG_max = exp(-1*(ddG_max)/kT);
-const int Bigbuffer_max = 80;
-double PI  = 3.141592653589793238463;
-
-// If the mutation is to a stop codon
-// DG_mutant is set to 99 kcal/mol 
-// -> all copies are effectively aggregated
-const double DG_STOP = exp(-1*(99)/kT);
-
-double matrix[max_gene][max_resi][20];
+double matrix[gene_number][res_number][20];
+double matrix_supp[gene_number][res_number][20];
 
 /******* GENETIC CODE MAPPINGS *******/
 // these const mappings are hard-coded and populated at compile-time
@@ -100,115 +90,278 @@ struct codon_to_num{
 };
 
 struct codon_to_prot{
-    static std::map<std::string,std::string> create_map()
+    static std::map<std::string,char> create_map()
         {
-          std::map<std::string,std::string> m;
-          m["AAA"] = "K";
-          m["AAC"] = "N";
-          m["AAG"] = "K";
-          m["AAT"] = "N";
-          m["ACA"] = "T";
-          m["ACC"] = "T";
-          m["ACG"] = "T";
-          m["ACT"] = "T";
-          m["AGA"] = "R";
-          m["AGC"] = "S";
-          m["AGG"] = "R";
-          m["AGT"] = "S";
-          m["ATA"] = "I";
-          m["ATC"] = "I";
-          m["ATG"] = "M";
-          m["ATT"] = "I";
-          m["CAA"] = "Q";
-          m["CAC"] = "H";
-          m["CAG"] = "Q";
-          m["CAT"] = "H";
-          m["CCA"] = "P";
-          m["CCC"] = "P";
-          m["CCG"] = "P";
-          m["CCT"] = "P";
-          m["CGA"] = "R";
-          m["CGC"] = "R";
-          m["CGG"] = "R";
-          m["CGT"] = "R";
-          m["CTA"] = "L";
-          m["CTC"] = "L";
-          m["CTG"] = "L";
-          m["CTT"] = "L";
-          m["GAA"] = "E";
-          m["GAC"] = "D";
-          m["GAG"] = "E";
-          m["GAT"] = "D";
-          m["GCA"] = "A";
-          m["GCC"] = "A";
-          m["GCG"] = "A";
-          m["GCT"] = "A";
-          m["GGA"] = "G";
-          m["GGC"] = "G";
-          m["GGG"] = "G";
-          m["GGT"] = "G";
-          m["GTA"] = "V";
-          m["GTC"] = "V";
-          m["GTG"] = "V";
-          m["GTT"] = "V";
+          std::map<std::string,char> m;
+          m["AAA"] = 'K';
+          m["AAC"] = 'N';
+          m["AAG"] = 'K';
+          m["AAT"] = 'N';
+          m["ACA"] = 'T';
+          m["ACC"] = 'T';
+          m["ACG"] = 'T';
+          m["ACT"] = 'T';
+          m["AGA"] = 'R';
+          m["AGC"] = 'S';
+          m["AGG"] = 'R';
+          m["AGT"] = 'S';
+          m["ATA"] = 'I';
+          m["ATC"] = 'I';
+          m["ATG"] = 'M';
+          m["ATT"] = 'I';
+          m["CAA"] = 'Q';
+          m["CAC"] = 'H';
+          m["CAG"] = 'Q';
+          m["CAT"] = 'H';
+          m["CCA"] = 'P';
+          m["CCC"] = 'P';
+          m["CCG"] = 'P';
+          m["CCT"] = 'P';
+          m["CGA"] = 'R';
+          m["CGC"] = 'R';
+          m["CGG"] = 'R';
+          m["CGT"] = 'R';
+          m["CTA"] = 'L';
+          m["CTC"] = 'L';
+          m["CTG"] = 'L';
+          m["CTT"] = 'L';
+          m["GAA"] = 'E';
+          m["GAC"] = 'D';
+          m["GAG"] = 'E';
+          m["GAT"] = 'D';
+          m["GCA"] = 'A';
+          m["GCC"] = 'A';
+          m["GCG"] = 'A';
+          m["GCT"] = 'A';
+          m["GGA"] = 'G';
+          m["GGC"] = 'G';
+          m["GGG"] = 'G';
+          m["GGT"] = 'G';
+          m["GTA"] = 'V';
+          m["GTC"] = 'V';
+          m["GTG"] = 'V';
+          m["GTT"] = 'V';
           //STOP
-          m["TAA"] = "X";
-          m["TAC"] = "Y";
+          m["TAA"] = 'X';
+          m["TAC"] = 'Y';
           //STOP
-          m["TAG"] = "X";
-          m["TAT"] = "Y";
-          m["TCA"] = "S";
-          m["TCC"] = "S";
-          m["TCG"] = "S";
-          m["TCT"] = "S";
+          m["TAG"] = 'X';
+          m["TAT"] = 'Y';
+          m["TCA"] = 'S';
+          m["TCC"] = 'S';
+          m["TCG"] = 'S';
+          m["TCT"] = 'S';
           //STOP
-          m["TGA"] = "X";
-          m["TGC"] = "C";
-          m["TGG"] = "W";
-          m["TGT"] = "C";
-          m["TTA"] = "L";
-          m["TTC"] = "F";
-          m["TTG"] = "L";
-          m["TTT"] = "F";
+          m["TGA"] = 'X';
+          m["TGC"] = 'C';
+          m["TGG"] = 'W';
+          m["TGT"] = 'C';
+          m["TTA"] = 'L';
+          m["TTC"] = 'F';
+          m["TTG"] = 'L';
+          m["TTT"] = 'F';
           return m;
         }
-    static const std::map<std::string,std::string> cprot;
+    static const std::map<std::string,char> cprot;
 };
 
 struct prot_to_num{
-    static std::map<std::string,int> create_map()
+    static std::map<char,int> create_map()
         {
-          std::map<std::string,int> m;
-          m["A"] = 1;
-          m["C"] = 2;
-          m["D"] = 3;
-          m["E"] = 4;
-          m["F"] = 5;
-          m["G"] = 6;
-          m["H"] = 7;
-          m["I"] = 8;
-          m["K"] = 9;
-          m["L"] = 10;
-          m["M"] = 11;
-          m["N"] = 12;
-          m["P"] = 13;
-          m["Q"] = 14;
-          m["R"] = 15;
-          m["S"] = 16;
-          m["T"] = 17;
-          m["V"] = 18;
-          m["W"] = 19;
-          m["Y"] = 20;
-          m["X"] = 21;//STOP
+          std::map<char,int> m;
+          m['A'] = 1;
+          m['C'] = 2;
+          m['D'] = 3;
+          m['E'] = 4;
+          m['F'] = 5;
+          m['G'] = 6;
+          m['H'] = 7;
+          m['I'] = 8;
+          m['K'] = 9;
+          m['L'] = 10;
+          m['M'] = 11;
+          m['N'] = 12;
+          m['P'] = 13;
+          m['Q'] = 14;
+          m['R'] = 15;
+          m['S'] = 16;
+          m['T'] = 17;
+          m['V'] = 18;
+          m['W'] = 19;
+          m['Y'] = 20;
+          m['X'] = 21;//STOP
           return m;
         }
-    static const std::map<std::string,int> pnum;
+    static std::map<char,int> const pnum;
 };
 
 // populate genetic code mappings
-const std::map<std::string,int> codon_to_num::cnum = codon_to_num::create_map();
-const std::map<std::string,int> prot_to_num::pnum = prot_to_num::create_map();
-const std::map<std::string,std::string> codon_to_prot::cprot = codon_to_prot::create_map();
+std::map<std::string,int> const codon_to_num::cnum = codon_to_num::create_map();
+std::map<char,int> const prot_to_num::pnum = prot_to_num::create_map();
+std::map<std::string,char> const codon_to_prot::cprot = codon_to_prot::create_map();
+
+// string hash function from Github user rioki
+constexpr
+unsigned int hashString(const char* str, int h = 0)
+{
+    return !str[h] ? 5381 : (hashString(str, h+1)*33) ^ str[h];
+}
+
+Encoding_Type intToEncoding_Type(int type){
+    switch (type){
+        case 0:
+            return Encoding_Type::by_default;
+        case 1:
+            return Encoding_Type::no_sequence;
+        case 2:
+            return Encoding_Type::full;
+        case 3:
+            return Encoding_Type::other;
+        default:
+            return Encoding_Type::by_default;
+    }
+}
+
+Init_Pop intToPop_Type(int type){
+    switch (type){
+        case 0:
+            return Init_Pop::from_snapFile;
+        case 1:
+            return Init_Pop::from_cellFile;
+        default:
+            return Init_Pop::from_snapFile;
+    }
+}
+
+Input_Type stringToInput_Type(const std::string& type){
+    switch (hashString(type.c_str())){
+        case hashString("s"):
+            return Input_Type::selection_coefficient;
+          break;
+        case hashString("stability"):
+            return Input_Type::stability;
+          break;
+        default:
+            return Input_Type::selection_coefficient;
+          break;
+    }
+}
+
+void openCommandLog(std::ofstream& cmdlog, std::string outDir, char *argv[], int argc){
+    sprintf(buffer,"out/%s/command.log",outDir.c_str());
+    cmdlog = std::ofstream(buffer, std::ios::out | std::ios::trunc);
+
+    if (cmdlog.is_open()){
+        // file was opened successfully
+        std::cout << "-> Command log was opened successfully ..." << std::endl;
+        std::string args;
+        std::for_each( argv + 1, argv + argc , [&]( const char* c_str ){ args += std::string ( c_str ) + " "; } );
+        cmdlog << "sodapop " << args << std::endl;
+        cmdlog << std::endl;
+    }
+    else{
+        // error opening file, throw exception
+        throw std::runtime_error("Unable to open command log.");
+    }
+}
+
+void openMutationLog(std::ofstream& mutlog, std::string outDir){
+    sprintf(buffer, "out/%s/MUTATION_LOG",outDir.c_str());
+    mutlog = std::ofstream(buffer, std::ios::out | std::ios::trunc);
+
+    if (mutlog.is_open()){
+        // file was opened successfully
+        std::cout << "-> Mutation log was opened successfully ..." << std::endl;
+    }
+    else{
+        // error opening file, throw exception
+        throw std::runtime_error("Unable to open mutation log.");
+    }
+}
+
+void openPevLog(std::ofstream& pevlog, std::string outDir){
+	// Open pevlog
+	sprintf(buffer, "out/%s/PANGENOMES_EVOLUTION_LOG.txt",outDir.c_str());
+	pevlog.open(buffer);
+	if ( !pevlog.is_open() ) {
+		std::cerr << "Pangenomes evolution log file could not be opened";
+		exit(1);
+	}else{
+		std::cout << "Opening pangenomes evolution log ..." << std::endl;
+		pevlog <<"Generation_ctr"<<"\t"<<"cell_ID"<<"\t"<<"x"<<"\t"<<"r_x"<<"\t"<<"Beta_x"<<"\t"<<"Alpha_x"<<"\t"<<"fitness"<<std::endl;
+	}
+}
+
+void openCellsgenecontentLog(std::ofstream& cells_gene_content_log, std::string outDir){
+	// Open cells_gene_content_log
+	sprintf(buffer, "out/%s/CELL_GENE_CONTENT_LOG.txt",outDir.c_str());
+	cells_gene_content_log.open(buffer);
+	if ( !cells_gene_content_log.is_open() ) {
+		std::cerr << "Cell gene content log file could not be opened";
+		exit(1);
+	}else{
+		std::cout << "Opening Cell gene content log ..." << std::endl;
+		cells_gene_content_log <<"Generation_ctr"<<"\t"<<"cell_ID"<<"\t"<<"gene_ID"<<"\t"<<"nucl_sequence"<<std::endl;
+	}
+}
+
+void openGainLog(std::ofstream& gainlog, std::string outDir){
+	// Open gainlog
+	sprintf(buffer, "out/%s/GENE_GAIN_EVENTS_LOG.txt",outDir.c_str());
+	gainlog.open(buffer);
+	if ( !gainlog.is_open() ) {
+		std::cerr << "Gene gain events log file could not be opened";
+		exit(1);
+	}else{
+		std::cout << "Opening gene gain events log ..." << std::endl;
+		//d_cell is the donor cell and r_cell is the receiving cell
+		gainlog <<"gain_event_ID"<<"\t"<<"Generation_ctr"<<"\t"<<"d_cell_ID"<<"\t"<<"d_cell_barcode"<<"\t"<<"r_cell_ID"<<"\t"<<"r_cell_barcode"<<"\t"<<"gene_ID"<<std::endl;
+	}
+
+}
+
+void openLossLog(std::ofstream& losslog, std::string outDir){
+	// Open losslog
+	sprintf(buffer, "out/%s/GENE_LOSS_EVENTS_LOG.txt",outDir.c_str());
+	losslog.open(buffer);
+	if ( !losslog.is_open() ) {
+		std::cerr << "Gene loss events log file could not be opened";
+		exit(1);
+	}else{
+		std::cout << "Opening gene loss events log ..." << std::endl;
+		//t_cell is the target cell
+		losslog <<"loss_event_ID"<<"\t"<<"Generation_ctr"<<"\t"<<"t_cell_ID"<<"\t"<<"t_cell_barcode"<<"\t"<<"gene_ID"<<std::endl;
+	}
+}
+
+
+void openStartingPop(std::string filePath, std::ifstream& fileStream){
+    std::cout << "Opening starting population snapshot ..." << std::endl;
+    fileStream = std::ifstream(filePath.c_str(),std::ios::in|std::ios::binary);
+    if (fileStream.is_open()){
+        // file was opened successfully
+        std::cout << "-> File was opened successfully ..." << std::endl;
+    }
+    else{
+        // error opening file, throw exception
+        throw std::runtime_error("Unable to open starting population snapshot.");
+    }
+}
+
+void readSnapshotHeader(std::ifstream& snapshot)
+{
+    snapshot.read((char*)(&frame_time),sizeof(double));
+    //read number of cells in file
+    snapshot.read((char*)(&Total_Cell_Count),sizeof(int));
+    //read file outputEncoding
+    snapshot.read((char*)(&dummy),sizeof(int));
+}
+
+void createOutputDir(std::string dirName){
+    sprintf(buffer,"out/%s/snapshots",dirName.c_str());
+    outPath = buffer;
+    std::cout << "Creating directory " << outPath << " ... " << (makePath(outPath) ? "OK" : "failed") << std::endl;
+}
 
 /******* MAPPING FUNCTIONS *******/
 
@@ -216,9 +369,8 @@ const std::map<std::string,std::string> codon_to_prot::cprot = codon_to_prot::cr
 // output: index number of codon
 int GetIndexFromCodon(std::string in_codon)
 {
-    std::map <std::string, int>::const_iterator it;
-    it = codon_to_num::cnum.find(in_codon);  
-    if(it == codon_to_num::cnum.end()){
+    auto it = codon_to_num::cnum.find(in_codon);
+    if (it == codon_to_num::cnum.end()){
         std::cerr << "Invalid codon: "<< in_codon << std::endl;
         std::cerr << "Nucleotide sequence must not contain STOP codons."<< std::endl;
         exit(2);
@@ -230,118 +382,60 @@ int GetIndexFromCodon(std::string in_codon)
 // output: amino acid sequence as string
 std::string GetProtFromNuc(std::string in_seq)
 {
-    int ln = in_seq.length();
-    if((ln % 3) != 0)
-    {
+    const int ln = in_seq.length();
+    if ((ln % 3) != 0){
         std::cerr << "Invalid length for nucleotide sequence: " << ln << std::endl;
         std::cerr << "Nucleotide sequence length must be divisible by 3." << std::endl;
         exit(2);
     }
-    int la=ln/3;   
+    const int la=ln/3;
     std::string AA="";
-    for(int i=0; i<la;i++){
+    for (int i=0; i<la;++i){
         std::string temp=in_seq.substr(i*3,3);
         
-        //check for valid code
-        std::map <std::string, std::string> :: const_iterator Iter;
-        Iter = codon_to_prot::cprot.find(temp);
-        if (Iter == codon_to_prot::cprot.end()){
+        auto it = codon_to_prot::cprot.find(temp);
+        if (it == codon_to_prot::cprot.end()){
           std::cerr << "Invalid codon: "<< temp << std::endl;
           std::cerr << "Nucleotide sequence must not contain STOP codons."<< std::endl;
           exit(2);
         }   
-        AA.append(codon_to_prot::cprot.at(temp));
+        AA.push_back(codon_to_prot::cprot.at(temp));
     }
     return AA;
 }
 
 // input:  amino acid letter as string
 // output: index number of amino acid
-int GetIndexFromAA(std::string aa)
+int GetIndexFromAA(char aa)
 {  
     //check for valid amino acid
-    std::map <std::string, int> :: const_iterator it;
-    it = prot_to_num::pnum.find(aa);
-    if( it == prot_to_num::pnum.end()){
+    auto it = prot_to_num::pnum.find(aa);
+    if (it == prot_to_num::pnum.end()){
         std::cerr << "Invalid amino acid: "<< aa << std::endl;
         exit(2);
     }
     return it->second;
 }
 
-//duplicate function, allows for a single char input
-int GetIndexFromAA(char aa){
-    std::map <char, int> m;
-    m['A'] = 1;
-    m['C'] = 2;
-    m['D'] = 3;
-    m['E'] = 4;
-    m['F'] = 5;
-    m['G'] = 6;
-    m['H'] = 7;
-    m['I'] = 8;
-    m['K'] = 9;
-    m['L'] = 10;
-    m['M'] = 11;
-    m['N'] = 12;
-    m['P'] = 13;
-    m['Q'] = 14;
-    m['R'] = 15;
-    m['S'] = 16;
-    m['T'] = 17;
-    m['V'] = 18;
-    m['W'] = 19;
-    m['Y'] = 20;
-    m['X'] = 21;//default for missing amino acids
-
-    //check for valid amino acid
-    std::map <char, int> :: const_iterator Iter;
-    Iter = m.find(aa);
-    if ( Iter == m.end( ) ){
-      std::cerr << "Invalid amino acid: "<< aa << std::endl;
-      exit(2);
-    }
-    return m[aa];
-}
-
-// verifies validity of nucleotide
-// input: a single nucleotide
-// output: nucleotide number from index
-int CheckBP(std::string a){
-    std::map <std::string, int> A;
-    A["A"] = 1;
-    A["T"] = 2;
-    A["G"] = 3;
-    A["C"] = 4;
-
-    std::map <std::string, int> :: const_iterator Iter;
-    Iter = A.find(a);
-    if (Iter == A.end()){
-        std::cerr << "Invalid nucleotide: " << a << std::endl;
-        exit(2);
-    }
-    return A[a];
-}
-
 // returns the next or second to next bp from a given nucleotide
-std::string AdjacentBP(std::string a, int j){
+const char AdjacentBP(char a, int j){
  
     if ( j > 2 ){
         std::cerr << "Invalid bp distance. Error in AdjacentBP(). "<< j << std::endl;
         exit(2);
     }
 
-    std::map <std::string, int> A;
-    A["A"] = 0;
-    A["T"] = 1;
-    A["G"] = 2;
-    A["C"] = 3;
+    std::map <char, int> A;
+    A['A'] = 0;
+    A['T'] = 1;
+    A['G'] = 2;
+    A['C'] = 3;
 
-    std::map <int, std::string> B;
-    B[0] = "A";
-    B[1] = "T";
-    B[2] = "G";
-    B[3] = "C";
+    std::map <int, char> B;
+    B[0] = 'A';
+    B[1] = 'T';
+    B[2] = 'G';
+    B[3] = 'C';
 
     int x = (A[a] + j + 1) % 4; 	//get (j+1) nucleotide from a
     return B[x];
@@ -357,22 +451,28 @@ std::string n3_to_n3(std::string a, std::string b, int i){
   double r = randomNumber();
   double l;
 
-  if ( a == "TAA")
-  {
+  //change statement to switch
+  if ( a == "TAA"){
       switch (i)
       {
           case 0:
               l =  (2*r);
 
               if (b == "CAA" ){
-                if  ( l<1 )	a = "GAA";
-                else 		a = "AAA";
+                if  ( l<1 )
+                  a = "GAA";
+                else
+                  a = "AAA";
               }else if (b == "GAA" ){
-                if  ( l<1 )	a = "CAA";
-                else 		a = "AAA";
+                if  ( l<1 )
+                  a = "CAA";
+                else
+                  a = "AAA";
               }else if (b == "AAA" ){
-                 if  ( l<1 )	a = "GAA";
-                else 		a = "CAA";
+                if  ( l<1 )
+                  a = "GAA";
+                else
+                  a = "CAA";
               }else{
                 std::cerr << "Invalid mutation. n3_to_n3()." << std::endl;
                 exit(2);
@@ -381,8 +481,10 @@ std::string n3_to_n3(std::string a, std::string b, int i){
            break;
 
           case 1:
-              if 	(b == "TTA") a = "TCA";
-              else if (b == "TCA") a = "TTA";
+              if 	(b == "TTA")
+                a = "TCA";
+              else if (b == "TCA")
+                a = "TTA";
               else {
                 std::cerr << "Invalid starting codon in n3_to_n3()." << std::endl;
                 exit(2); 
@@ -391,8 +493,10 @@ std::string n3_to_n3(std::string a, std::string b, int i){
             break;
 
           case 2:
-              if 	(b == "TAT") a = "TAC";
-              else if (b == "TAC") a = "TAT";
+              if 	(b == "TAT")
+                a = "TAC";
+              else if (b == "TAC")
+                a = "TAT";
               else {
                 std::cerr << "Invalid starting codon in n3_to_n3()." << std::endl;
                 exit(2); 
@@ -412,14 +516,20 @@ std::string n3_to_n3(std::string a, std::string b, int i){
               l = (2*r);
 
               if (b == "AAG" ){
-                if  ( l<1 )	a = "GAG";
-                else 		a = "CAG";
+                if  ( l<1 )
+                  a = "GAG";
+                else
+                  a = "CAG";
               }else if (b == "GAG" ){
-                if  ( l<1 )	a = "AAG";
-                else 		a = "CAG";
+                if  ( l<1 )
+                  a = "AAG";
+                else
+                  a = "CAG";
               }else if (b == "CAG" ){
-                 if  ( l<1 )	a = "GAG";
-                else 		a = "AAG";
+                if  ( l<1 )
+                  a = "GAG";
+                else
+                  a = "AAG";
               }else{
                 std::cerr << "Invalid mutation. n3_to_n3()." << std::endl;
                 exit(2);
@@ -523,15 +633,15 @@ std::string n3_to_n3(std::string a, std::string b, int i){
 std::string getBarcode()
 {
     char seq [16];
-    for(int i = 0; i < 15; i++){
-        if(randomNumber()<0.5){
-            if(randomNumber()<0.5){
+    for (int i = 0; i < 15; ++i){
+        if (randomNumber()<0.5){
+            if (randomNumber()<0.5){
                 seq[i] = 'G';
             }
             else seq[i] = 'C';
         }
         else{
-            if(randomNumber()<0.5){
+            if (randomNumber()<0.5){
                 seq[i] = 'A';
             }
             else seq[i] = 'T';
@@ -544,20 +654,24 @@ std::string getBarcode()
 // initializes the 3D matrix for DDG values
 void InitMatrix()
 {
-    for(int i = 0; i != max_gene; ++i)
-      for(int j = 0; j != max_resi; ++j)
-        for(int k = 0; k != 20; ++k)
-          matrix[i][j][k] = 1; //i.e., exp(-0/kT) = 1
+    std::cout << "Initializing matrix ..." << std::endl;
+    for (int i = 0; i != gene_number; ++i)
+      for (int j = 0; j != res_number; ++j)
+        for (int k = 0; k != 20; ++k){
+            matrix[i][j][k] = 1; //i.e., exp(-0/kT) = 1
+            matrix_supp[i][j][k] = 1; // maybe it would make more sense here to set it to inf
+        }
 }
 
 // extracts values from the DDG file and stores them in the matrix
-double ExtractPDDGMatrix(std::string filepath)
+double ExtractDDGMatrix(std::string filepath, Matrix_Type m)
 {
-    std::fstream temp(filepath);
-    if(!temp.is_open()){
-        std::cerr << "File could not be open: "<< filepath << std::endl;
+    std::ifstream temp(filepath);
+    if (!temp.is_open()){
+        std::cerr << "File could not be opened: "<< filepath << std::endl;
         exit(2);
     }
+    std::cout << "Extracting DDG matrix ..." << std::endl;
     std::string line;
     int gene_num = 0;
     double sum = 0;
@@ -570,13 +684,30 @@ double ExtractPDDGMatrix(std::string filepath)
         if ( word == "DDG"){
             iss >> word;
             //residue index
-            int i = atoi(word.c_str());
-            for(int j = 0; iss>>word; j++){
+            const int i = atoi(word.c_str());
+            for (int j = 0; iss>>word; ++j){
                 //extract DDG values
-                double x = atof(word.c_str());
+                const double x = atof(word.c_str());
                 sum +=x;
-                idx++;
-                matrix[gene_num][i-1][j] = exp(-x/kT);
+                ++idx;
+                //if(m){
+                    //matrix_supp[gene_num][i-1][j] = exp(-x/kT);
+                //}
+                //else{
+                    matrix[gene_num][i-1][j] = exp(-x/kT);
+                //}
+            }
+        }
+        else if ( word == "rCat"){
+            iss >> word;
+            //residue index
+            const int i = atoi(word.c_str());
+            for (int j = 0; iss>>word; ++j){
+                //extract DDG values
+                const double x = atof(word.c_str());
+                sum +=x;
+                ++idx;
+                matrix_supp[gene_num][i-1][j] = x;
             }
         }
         else if ( word == "Gene_NUM"){
@@ -585,20 +716,20 @@ double ExtractPDDGMatrix(std::string filepath)
         }
     }
     temp.close();
-    avg_DG = sum/idx;
-    return avg_DG;
+    return sum/idx;
 }
 
 void ExtractDMSMatrix(std::string filepath)
 {
-    std::fstream temp(filepath);
-    if(!temp.is_open()){
+    std::ifstream temp(filepath);
+    if (!temp.is_open()){
         std::cerr << "File could not be open: "<< filepath << std::endl;
         exit(2);
     }
+    std::cout << "Extracting DMS matrix ..." << std::endl;
     std::string line;
     int gene_num = 0;
-    while(!temp.eof()){
+    while (!temp.eof()){
         std::string word;
         getline(temp,line);
         std::istringstream iss(line, std::istringstream::in);
@@ -606,10 +737,10 @@ void ExtractDMSMatrix(std::string filepath)
         if ( word == "DMS"){
             iss >> word;
             //residue index
-            int i = atoi(word.c_str());
-            for(int j = 0; iss>>word; j++){
+            const int i = atoi(word.c_str());
+            for (int j = 0; iss>>word; ++j){
                 //extract DMS values
-                double x = atof(word.c_str());
+                const double x = atof(word.c_str());
                 matrix[gene_num][i-1][j] = x;
             }
         }
@@ -621,7 +752,7 @@ void ExtractDMSMatrix(std::string filepath)
     temp.close();
 }
 
-double Ran_Gaussian(const double mean, const double sigma)
+double Ran_Gaussian(double const mean, double const sigma)
 {
     double x, y, r2;
     do{
@@ -638,11 +769,12 @@ double Ran_Gaussian(const double mean, const double sigma)
 // Loads primordial genes in a VectStr
 int LoadPrimordialGenes(const std::string& genelistfile, const std::string& genesPath)
 {  
-    std::fstream genelistIN (genelistfile.c_str());
+    std::ifstream genelistIN (genelistfile.c_str());
     if (!genelistIN.is_open()){
         std::cerr << "File could not be open: "<< genelistfile <<std::endl;
         exit(2);
     }
+    std::cout << "Loading primordial genes file ..." << std::endl;
     int flag_AASeq = 0; 
     int gc = 0;
     while(!genelistIN.eof()){
@@ -653,7 +785,7 @@ int LoadPrimordialGenes(const std::string& genelistfile, const std::string& gene
         if ( word=="G" ){
             iss >> word;
             word = genesPath + word;
-            std::fstream genefileIN (word.c_str(), std::fstream::in | std::fstream::out);
+            std::ifstream genefileIN (word.c_str(), std::ifstream::in | std::ifstream::out);
             if (!genefileIN.is_open()){
                 std::cerr << "File could not be open: " << word << std::endl;
                 exit(2);
@@ -666,7 +798,7 @@ int LoadPrimordialGenes(const std::string& genelistfile, const std::string& gene
                   getline(genefileIN,l);
                   std::istringstream iss(l, std::istringstream::in);
                   iss >> w;
-                  if(w=="Gene_NUM"){
+                  if (w=="Gene_NUM"){
                       iss >> w;
                       gn = atoi(w.c_str());
                   }
@@ -675,9 +807,9 @@ int LoadPrimordialGenes(const std::string& genelistfile, const std::string& gene
                       iss >> w;
                       std::string aaseq=GetProtFromNuc(w);
                       //check stop codons in midsequence
-                      size_t loc = aaseq.find("X", 0);
+                      size_t loc = aaseq.find('X', 0);
                       assert( loc == std::string::npos ); // no match
-                      VectStr_iterator iter = PrimordialAASeq.begin();
+                      auto iter = PrimordialAASeq.begin();
                       PrimordialAASeq.insert(iter+gn, aaseq); 
                       flag_AASeq += 1;
                   }
@@ -694,18 +826,19 @@ int LoadPrimordialGenes(const std::string& genelistfile, const std::string& gene
 }
 
 // Reads a unit cell stored in binary format using Cell::dumpShort()
-void qread_Cell(std::fstream& IN, std::fstream& OUT)
+void qread_Cell(std::ifstream& IN, std::ofstream& OUT)
 {
-    char buffer[140];
-    int na, ns;
-    double f;
+    char mybuffer[140];
+    int na = 0;
+    int ns = 0;
+    double f = 0;
     std::string barcode;
 
-    int l;
+    int l = 0;
     IN.read((char*)&l, sizeof(int));
     std::vector<char> buf(l);
     IN.read(&buf[0], l);
-    barcode.assign(buf.data(), buf.size());
+    barcode.assign(buf.begin(), buf.end());
 
     OUT << barcode;
 
@@ -713,26 +846,29 @@ void qread_Cell(std::fstream& IN, std::fstream& OUT)
     IN.read((char*)(&ns),sizeof(int));
     IN.read((char*)(&f),sizeof(double));
     
-    sprintf(buffer,"\t%d\t%d\t%e", na, ns, f);
-    OUT << buffer;
+    sprintf(mybuffer,"\t%d\t%d\t%e", na, ns, f);
+    OUT << mybuffer;
 }
 
 // Reads a unit cell stored in binary format using Cell::dumpSeq()
-void seqread_Cell(std::fstream& IN, std::fstream& OUT)
+void seqread_Cell(std::ifstream& IN, std::ofstream& OUT)
 {
-    char buffer[140];
-    int cell_id, cell_index, gene_size;
-    double f,m;
+    char mybuffer[140];
+    int cell_id(0);
+    int cell_index(0);
+    int gene_size(0);
+    double f(0);
+    double m(0);
     std::string barcode;
 
     IN.read((char*)(&cell_index),sizeof(int));
     IN.read((char*)(&cell_id),sizeof(int));
 
-    int l;
+    int l(0);
     IN.read((char*)&l, sizeof(int));
     std::vector<char> buf(l);
     IN.read(&buf[0], l);
-    barcode.assign(buf.data(), buf.size());
+    barcode.assign(buf.begin(), buf.end());
 
     OUT << barcode;
 
@@ -740,31 +876,32 @@ void seqread_Cell(std::fstream& IN, std::fstream& OUT)
     IN.read((char*)(&m),sizeof(double));
     IN.read((char*)(&gene_size),sizeof(int));
     
-    sprintf(buffer,"\t%d\t%e\t%e\t", cell_index, f, m);
+    sprintf(mybuffer,"\t%d\t%e\t%e\t", cell_index, f, m);
 
-    OUT << buffer << std::endl;
+    OUT << mybuffer << std::endl;
 
-    for(int j=0; j<gene_size; j++){
+    for (int j=0; j<gene_size; ++j){
         std::string DNAsequence;   
-        int Na, Ns;
+        int Na(0);
+        int Ns(0);
 
         IN.read((char*)(&Na),sizeof(int));
         IN.read((char*)(&Ns),sizeof(int));
 
         //read DNA sequence
-        int nl;
+        int nl(0);
         IN.read((char*)&nl, sizeof(int));
         std::vector<char> buff(nl);
         IN.read(&buff[0], nl);  
-        DNAsequence.assign(buf.data(), buf.size());
+        DNAsequence.assign(buff.begin(), buff.end());
 
-        sprintf(buffer,"%d\tG\t%d\t%d\t",j,Ns,Na);
-        OUT << buffer << std::endl;
+        sprintf(mybuffer,"%d\tG\t%d\t%d\t",j,Ns,Na);
+        OUT << mybuffer << std::endl;
         OUT << DNAsequence << std::endl;
     }
 }
 
-void read_Parent(std::fstream& IN, std::fstream& OUT)
+void read_Parent(std::ifstream& IN, std::ofstream& OUT)
 {
     uint32_t a;
 
@@ -774,21 +911,24 @@ void read_Parent(std::fstream& IN, std::fstream& OUT)
 }
 
 // Reads a unit cell stored in binary format using Cell::dump()
-void read_Cell(std::fstream& IN, std::fstream& OUT, bool DNA)
+void read_Cell(std::ifstream& IN, std::ofstream& OUT, bool DNA)
 {
-    char buffer[140];
-    int cell_id, cell_index, gene_size;
-    double m,f;
+    char mybuffer[140];
+    int cell_id(0);
+    int cell_index(0);
+    int gene_size(0);
+    double f(0);
+    double m(0);
     std::string barcode;
 
     IN.read((char*)(&cell_index),sizeof(int));
     IN.read((char*)(&cell_id),sizeof(int));
 
-    int l;
+    int l(0);
     IN.read((char*)&l, sizeof(int));
     std::vector<char> buf(l);
     IN.read(&buf[0], l);  
-    barcode.assign(buf.data(), buf.size());
+    barcode.assign(buf.begin(), buf.end());
 
     OUT << barcode;
 
@@ -796,12 +936,20 @@ void read_Cell(std::fstream& IN, std::fstream& OUT, bool DNA)
     IN.read((char*)(&m),sizeof(double));
     IN.read((char*)(&gene_size),sizeof(int));
     
-    sprintf(buffer,"\t%d\t%.9f\t%e\t", cell_index, f, m);
-    OUT << buffer << std::endl;
+    sprintf(mybuffer,"\t%d\t%.9f\t%e\t", cell_index, f, m);
+    OUT << mybuffer << std::endl;
 
-    for(int j=0; j<gene_size; j++){
-        double e, c, dg, f, eff;
-        int gene_nid, Ns, Na;
+    //read gene info
+    double e(0);
+    double c(0);
+    double dg(0);
+    double eff(0);
+
+    int gene_nid(0);
+    int Ns(0);
+    int Na(0);
+
+    for (int j=0; j<gene_size; ++j){
         std::string DNAsequence;
 
         IN.read((char*)(&gene_nid),sizeof(int));   
@@ -815,15 +963,15 @@ void read_Cell(std::fstream& IN, std::fstream& OUT, bool DNA)
         IN.read((char*)(&Ns),sizeof(int));
         
         //read DNA sequence
-        int nl;
+        int nl(0);
         IN.read((char*)&nl, sizeof(int));
         std::vector<char> buff(nl);
         IN.read(&buff[0], nl);  
-        DNAsequence.assign(buf.data(), buf.size());
+        DNAsequence.assign(buff.begin(), buff.end());
 
-        sprintf(buffer,"%d\tG\t%e\t%.8f\t%.9f\t%d\t%d\t",j, c, dg, f, Na, Ns);
-        OUT << buffer << std::endl;
-        if(DNA) OUT << DNAsequence << std::endl;
+        sprintf(mybuffer,"%d\tG\t%e\t%.8f\t%.9f\t%d\t%d\t",j, c, dg, f, Na, Ns);
+        OUT << mybuffer << std::endl;
+        if (DNA) OUT << DNAsequence << std::endl;
         else OUT << GetProtFromNuc(DNAsequence) << std::endl;
     } 
 }
@@ -834,8 +982,9 @@ int StringDiff(const std::string& A, const std::string& B)
     unsigned int L = A.length();
     assert(L == B.length());
     int ctr = 0;  
-    for(unsigned int i =0; i<L; i++){
-        if( A.at(i) != B.at(i)) ctr+=1; 
+    for (unsigned int i =0; i<L; ++i){
+        if ( A.at(i) != B.at(i))
+          ctr+=1;
     } 
     return ctr;
 }
@@ -911,12 +1060,15 @@ bool makePath(const std::string& path)
 
 void printProgress (double progress)
 {
-    std::cout << "[";
-    int pos = PBWIDTH * progress;
-    for (int i = 0; i < PBWIDTH; ++i){
-        if (i < pos) std::cout << "=";
-        else if (i == pos) std::cout << "+";
-        else std::cout << " ";
+    std::cout << '[';
+    int pos = PBWidth * progress;
+    for (int i = 0; i < PBWidth; ++i){
+        if (i < pos)
+          std::cout << '=';
+        else if (i == pos)
+          std::cout << '+';
+        else
+          std::cout << ' ';
     }
 
     std::cout << "] " << int(progress * 100.0) << " %\r";

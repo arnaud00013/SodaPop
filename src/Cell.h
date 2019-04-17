@@ -1,5 +1,3 @@
-// Cell.h
-
 #ifndef CELL_H
 #define CELL_H
 
@@ -9,7 +7,7 @@
 class Gene;
 
 /*SodaPop
-Copyright (C) 2018 Louis Gauthier
+Copyright (C) 2019 Louis Gauthier
 
     SodaPop is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,54 +24,81 @@ Copyright (C) 2018 Louis Gauthier
  */
 
 class Cell {
-public:
-    
-    Cell();
-    Cell(std::fstream & );
-    Cell(std::fstream & ,const std::string & );
 
-    virtual ~Cell() {};
+    typedef double(Cell::*funcPtr)(void) const;
+public:
+
+    static int ff_;
+    static bool useDist_;
+    static bool fromS_;
+    static Gene selected_gene;
+
+    Cell();
+    Cell(std::ifstream & );
+    Cell(std::ifstream & ,const std::string & );
+
+    virtual ~Cell(){};
 
     int total_mutations(const int & );
     void FillGene_L();
     void linkGenes();
 
-    virtual void UpdateRates() = 0;
-    virtual void dump(std::fstream & , int) = 0;
-    virtual void PrintCell(int) = 0;
+    void UpdateRates();
 
-    const int ID() {return ID_;}
-    uint32_t parent() {return parent_;}
-    const double mrate() {return c_mrate_;}
-    const int gene_count() {return Gene_arr_.size();}
-    const int genome_size() {return Gene_L_.back();}
-    const std::string barcode() {return barcode_;}
-    void select_random_gene();
-    static Gene selected_gene;
-    int add_gene(const int &,const int &);
-    int remove_rand_gene(const int &,const int &);
-    void print_summary_Gene_arr_();
-    void print_summary_Gene_L_();
-
+    int ID() const {return ID_;}
+    uint32_t parent() const {return parent_;}
+    double mrate() const {return c_mrate_;}
+    int gene_count() const {return genomeVec_.size();}
+    int genome_size() const {return geneBlocks_.back();}
+    std::string barcode() const {return barcode_;}
+    double fitness() const;
 
     void change_ID(int a) {ID_ = a;}
     void setParent(uint32_t a) {parent_ = a;}
     void ch_barcode(std::string s) {barcode_ = s;}
 
     void ch_Fitness(double f){fitness_ = f;}
-    const double fitness();
 
-	double get_PevFe() const {
-		return pev_fe;
-	}
+    // Fitness functions
+    void selectFitness();
+    double flux() const;
+    double toxicity() const;
+    double metabolicOutput() const;
+    double multiplicative() const;
+    double neutral() const;
+    double noMut() const;
+    double fold() const;
+    double growthRate() const;
+    double multiplicative_without_genes_fit_mean() const;
 
-	void set_PevFe(double PevFe) {
-		pev_fe = PevFe;
-	}
+    void ranmut_Gene();
+    void ranmut_Gene(std::ofstream&, int);
+    void change_exprlevel();
+    double normalizeFit(double);
+    void dump(std::ofstream&, int) const;
+    void dumpShort(std::ofstream&) const;
+    void dumpParent(std::ofstream&) const;
 
-	double getSelCoeffCurrentMutation() const;
-	void setSelCoeffCurrentMutation(double selCoeffCurrentMutation);
-	void initialize_cumul_pev_effect();
+    /**** HGT ****/
+    void select_random_gene();
+    int add_gene(const double &,const double &);
+    int remove_rand_gene(const double &,const double &);
+    void print_summary_Gene_arr_();
+    void print_summary_Gene_L_();
+
+    double get_PevFe() const {return pev_fe;}
+    void set_PevFe(double PevFe) {pev_fe = PevFe;}
+
+    double getSelCoeffCurrentMutation() const;
+    void setSelCoeffCurrentMutation(double selCoeffCurrentMutation);
+    void dumpCellGeneContent(std::ofstream&,int);
+    /**** HGT ****/
+
+    void PrintCell(int) const;
+
+    int Na() const {return Total_Na_;}
+    int Ns() const {return Total_Ns_;}
+    void UpdateNsNa();
 
 protected:
     // organism barcode
@@ -94,20 +119,25 @@ protected:
     // organismal fitness
     double fitness_;
 
-
+    /**** HGT ****/
     //Pangenome evolution event (gain or loss of genes) fitness effect
     double pev_fe;
 
-    //used to save the selection coefficient of a mutation event
+     //used to save the selection coefficient of a mutation event
     double sel_coeff_current_mutation;
+    /**** HGT ****/
 
     //Array of genes
-    std::vector <Gene> Gene_arr_;
+    std::vector <Gene> genomeVec_;
 
     //Cummulative sum of gene lengths (i.e. genome size)
-    VectInt Gene_L_;
+    VectInt geneBlocks_;
 
+    int Total_Ns_;
+    int Total_Na_;
+
+    // function pointer to select fitness function
+    funcPtr fit;
 
 };
-
 #endif

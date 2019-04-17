@@ -7,7 +7,7 @@
 class Cell;
 
 /*SodaPop
-Copyright (C) 2018 Louis Gauthier
+Copyright (C) 2019 Louis Gauthier
 
     SodaPop is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ class Gene
 {
 public:
     Gene();
-    Gene(std::fstream&,Cell *);
+    Gene(std::ifstream&,Cell *);
     Gene(const Gene&);
     Gene(const Gene&, Cell *);
     ~Gene(); 
@@ -37,8 +37,10 @@ public:
 
     static void initGamma(double, double);
     static void initNormal(double, double);
+    static void initExponential(double);
     static double RandomGamma();
     static double RandomNormal();
+    static double RandomExponential();
 
     double Mutate_Stabil_Gaussian(int, int);
     std::string Mutate_Stabil(int, int);
@@ -47,25 +49,24 @@ public:
 
     void Update_Sequences(std::string);
 
-    const int num(){return g_num_;}
-    const int length(){return ln_;}
-    const int AAlength(){return la_;}
-    const std::string nseq(){return nucseq_;}
-    const double dg(){return dg_;}
-    const double eff(){return eff_;}
-    const double f(){return f_;}
-    const int Ns(){return Ns_;}
-    const int Na(){return Na_;}
+    int num() const {return gene_idx_;}
+    int geneLength() const {return gene_len_;}
+    int protLength() const {return prot_len_;}
+    std::string geneSeq() const {return gene_seq_;}
+    double dg() const {return dg_;}
+    double eff() const {return eff_;}
+    double f() const {return f_;}
+    int Ns() const {return Ns_;}
+    int Na() const {return Na_;}
 
     double conc() const {return conc_;}
     double e() const {return e_;}
 
-    double CheckDG();
-    double functional();
-    double misfolded();
-    double Pnat();
-    double A_factor();
-    double DDG_mean();
+    double functional() const;
+    double misfolded() const;
+    double Pnat() const;
+    double A_factor() const;
+    double DDG_mean() const;
 
     void ch_dg(const double a){dg_ = a;}
     void ch_f(const double a){f_ = a;}
@@ -75,35 +76,38 @@ public:
     void ch_Ns(const int a){Ns_ = a;}
     void ch_e(const double e){e_ = e;}
 
+    double getS_current_mutation() const;
+    void setS_current_mutation(double cumulSumFitEffectMutCurrentGen);
+    std::string getCodonSequence(const int i);
+    std::string getAAresidueFromCodonSequence(const std::string& original_codon_seq);
+
     Cell *GetCell() const;
     const void setCell(Cell*);
-	double getS_current_mutation() const;
-	void setS_current_mutation(double cumulSumFitEffectMutCurrentGen);
-	std::string getCodonSequence(const int i);
-	std::string getAAresidueFromCodonSequence(const std::string& original_codon_seq);
 
-    private:
-        int g_num_;     //numeric ID pointing to primordial gene
-        int ln_;        //length nuc seq
-        int la_;        //length aa seq
+private:
+        int gene_idx_;     //numeric ID pointing to primordial gene
+        int gene_len_;        //length nuc seq
+        int prot_len_;        //length aa seq
 
         int Na_;        //number of non-synonymous substitutions
         int Ns_;        //number of sysnonymous substitutions
         
-        std::string nucseq_;    //nucleotide sequence
+        std::string gene_seq_;    //nucleotide sequence
         
         double dg_;     //stability
         double f_;      //gene "fitness"
         double eff_;    //enzymatic efficiency
-        double s_current_mutation; //used to save the selection coefficient of a mutation event
+
         double conc_;    //concentration
         double e_;       //essentiality: between 0 and 1, can be used as a coefficient
+
+        double s_current_mutation; //used to save the selection coefficient of a mutation event
 
         Cell *myCell_;
 
         static std::gamma_distribution<> gamma_;
-        static std::normal_distribution<> normal_;     
-
+        static std::normal_distribution<> normal_;
+        static std::exponential_distribution<> exponential_;
 };
 
 #endif

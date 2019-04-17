@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <numeric>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
@@ -30,7 +31,7 @@
 #include "rng.h"
 
 /*SodaPop
-Copyright (C) 2018 Louis Gauthier
+Copyright (C) 2019 Louis Gauthier
 
     SodaPop is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,14 +46,6 @@ Copyright (C) 2018 Louis Gauthier
     You should have received a copy of the GNU General Public License
     along with SodaPop.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#define POPSIZEMAX 	1000000
-#define GENECOUNTMAX 	10000
-
-// for pretty printing of progress
-#define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
-#define PBWIDTH 70
-
 
 /******** CONTAINERS AND ITERATORS ********/
 
@@ -86,54 +79,112 @@ N.B. The physically allowed value for mutational DDG is DGG_min to DGG_max.
 If the estimated energy is out of this range, the mutation is ignored.
 *****/
 
-extern const double ddG_min;
-extern const double ddG_max;
-extern const double CONC_MAX ;
-extern const double kT; //defines the energy units
-extern const double COST; // misfolding cost, see Geiler-Samerotte et al. 2011
-extern const double fNs; //fraction of non-synonymous substitutions in a typical protein
+const int maxPopSize(1000000);
+const int maxGeneCount(100);
+constexpr int PBWidth(70);
+
+constexpr double ddG_low_bound(-10);
+constexpr double ddG_high_bound(99);
+constexpr double maxConcentration(1e15);
+constexpr double kT(0.5922); //defines the energy units
+constexpr double misfoldingCost(1e-4); // misfolding cost, see Geiler-Samerotte et al. 2011
+constexpr double fNS(0.775956284); //fraction of non-synonymous substitutions in a typical protein
+constexpr double prefactor(16000);
 
 // exponent values are precalculated to be used readily
-extern const double DDG_min;
-extern const double DDG_max;
-extern const int Bigbuffer_max;
-extern double PI;
+double const DDG_min = exp(-1*(ddG_low_bound)/kT);
+double const DDG_max = exp(-1*(ddG_high_bound)/kT);
+extern char buffer[];
 
 // If the mutation is to a stop codon
 // DG_mutant is set to 99 kcal/mol 
 // -> all copies are effectively aggregated
-extern const double DG_STOP;
+double const DG_stop = exp(-1*(99)/kT);
+
+// for pretty printing of progress
+#define PBstr "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
 
 // Create a 3D matrix for fitness landscape
-const int max_gene = 1200;
-const int max_resi = 640;
-extern double matrix[max_gene][max_resi][20];
+const int gene_number(100);
+const int res_number(1200);
 
-extern double avg_DG;
+extern double matrix[gene_number][res_number][20];
+extern double matrix_supp[gene_number][res_number][20];
+
+extern double fold_DG;
+extern double bind_DG;
+
+extern int Total_Cell_Count;
+extern int dummy;
+extern double frame_time;
+extern std::string outPath;
+
+enum Matrix_Type {
+    is_folding,
+    is_binding
+};
+
+enum Encoding_Type {
+    by_default,
+    no_sequence,
+    full,
+    other
+};
+
+enum Input_Type {
+    selection_coefficient,
+    stability
+};
+
+enum Init_Pop {
+    from_snapFile,
+    from_cellFile
+};
 
 /******* FUNCTION DECLARATIONS *******/
-int GetIndexFromAA(std::string);
+constexpr unsigned int hashString(const char*, int);
+Encoding_Type intToEncoding_Type(int);
+Init_Pop intToPop_Type(int);
+Input_Type stringToInput_Type(const std::string&);
+
 int GetIndexFromAA(char);
 int GetIndexFromCodon(std::string);
 std::string GetProtFromNuc(std::string);
-int CheckBP(std::string);
 std::string n3_to_n3(std::string, std::string, int);
+
 std::string getBarcode();
+
 //double RandomNumber();
-double Ran_Gaussian(const double, const double);
-std::string AdjacentBP(std::string, int);
+
+double Ran_Gaussian(double const, double const);
+
+const char AdjacentBP(char, int);
+
+//void initLandscape(Input_Type, int, std::vector<std::string>);
+
+void openStartingPop(std::string, std::ifstream&);
+void readSnapshotHeader(std::ifstream&);
+void createOutputDir(std::string);
+
+void openCommandLog(std::ofstream&, std::string, char *[], int);
+void openMutationLog(std::ofstream&, std::string);
+void openPevLog(std::ofstream& pevlog, std::string outDir);
+void openCellsgenecontentLog(std::ofstream& cells_gene_content_log, std::string outDir);
+void openGainLog(std::ofstream& gainlog, std::string outDir);
+void openLossLog(std::ofstream& losslog, std::string outDir);
+
 void InitMatrix();
-double ExtractPDDGMatrix(std::string);
+double ExtractDDGMatrix(std::string,Matrix_Type);
 void ExtractDMSMatrix(std::string);
-int LoadPrimordialGenes(const std::string&,const std::string&);
+int LoadPrimordialGenes(const std::string&, const std::string&);
 int StringDiff(const std::string&, const std::string&);
 std::string trim(const std::string&);
 bool isDirExist(const std::string&);
 bool makePath(const std::string&);
 void printProgress (double);
 
-void qread_Cell(std::fstream&, std::fstream&);
-void seqread_Cell(std::fstream&, std::fstream&);
-void read_Parent(std::fstream&, std::fstream&);
-void read_Cell(std::fstream&, std::fstream&, bool);
+void qread_Cell(std::ifstream&, std::ofstream&);
+void seqread_Cell(std::ifstream&, std::ofstream&);
+void read_Parent(std::ifstream&, std::ofstream&);
+void read_Cell(std::ifstream&, std::ofstream&, bool);
 #endif
