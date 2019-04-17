@@ -368,8 +368,6 @@ void Cell::ranmut_Gene(std::ofstream& log,int ctr)
 
     double wi = fitness();
 
-    int the_gene_id = -1;//initialization with -1
-
     //change statement to switch
     if (fromS_){
         if (useDist_){
