@@ -1,4 +1,3 @@
-#include "../src/PolyCell.h"
 #include "../src/Cell.h"
 #include "../src/Gene.h"
 
@@ -16,10 +15,10 @@ int main(int argc, char* argv[]) {
     assert((flag == 0) | (flag == 1) | (flag == 2) | (flag == 3));
 
     char buffer[200];
-    std::vector < PolyCell > Cell_arr;
+    std::vector < Cell > Cell_arr;
 
     // open stream to read population summary
-    std::fstream popf(argv[1]);
+    std::ifstream popf(argv[1]);
     if (!popf.is_open()) {
         std::cerr << "File could not be opened";
         exit(1);
@@ -32,7 +31,7 @@ int main(int argc, char* argv[]) {
     double limit = 0.90;
 
     std::string line;
-    Cell_arr.reserve(POPSIZEMAX);
+    Cell_arr.reserve(maxPopSize);
     while (!popf.eof()) {
         getline(popf, line);
         std::string word;
@@ -42,12 +41,12 @@ int main(int argc, char* argv[]) {
             iss >> word; //cell count
             int count = atoi(word.c_str());
             iss >> word; //cell files
-            std::fstream temp(word.c_str()); //convert std::string to char
+            std::ifstream temp(word.c_str()); //convert std::string to char
             if (!temp.is_open()) {
                 std::cerr << "File could not be open: " << word << std::endl;
                 exit(1);
             }
-            PolyCell A(temp);
+            Cell A(temp);
             switch(flag)
             {
                 case 0: A.ch_barcode(getBarcode());         
@@ -70,7 +69,7 @@ int main(int argc, char* argv[]) {
                 case 3: A.ch_barcode(getBarcode());
                         int nClusters = (count + 10 - 1) / 10;
                         int remainder = count % 10;
-                        for (int k = 0; k < nClusters; k++) {
+                        for (int k = 0; k < nClusters - 1; k++) {
                             //edit fitness here (draw selection coefficient for clusters of 10 cells)
                             //fetch selection coefficient
                             double s = Gene::RandomGamma();
@@ -113,7 +112,7 @@ int main(int argc, char* argv[]) {
     sprintf(buffer, "%s.snap", rawname.c_str());
 
     // Open stream to write snapshot
-    std::fstream OUT(buffer, std::ios::out);
+    std::ofstream OUT(buffer, std::ios::out);
     if (!OUT.is_open()) {
         std::cerr << "Snapshot file could not be opened";
         exit(1);

@@ -4,7 +4,6 @@ arg = commandArgs(trailingOnly=TRUE)
 src = arg[1]
 dt=as.numeric(arg[2])
 dir = getwd()
-gc = as.numeric(arg[3])
 
 #### LOAD UTILITIES (INSTALL IF MISSING)
 if(!require("pacman")) install.packages("pacman",repos = "http://cran.us.r-project.org")
@@ -31,7 +30,6 @@ avg_fitness$gen = as.numeric(row.names(avg_fitness))*dt-dt
 
 message("R: Importing average stability trajectory...")
 stabil_0 <- read.csv(paste(dir,src,"gene/stabil_0.txt",sep=""), header = FALSE)
-
 #stabil_1 <- read.csv(paste(dir,src,"gene/stabil_1.txt",sep=""), header = FALSE)
 #stabil_2 <- read.csv(paste(dir,src,"gene/stabil_2.txt",sep=""), header = FALSE)
 #stabil_3 <- read.csv(paste(dir,src,"gene/stabil_3.txt",sep=""), header = FALSE)
@@ -53,21 +51,14 @@ colnames(generations)[2:(ncol(generations))]=seq(0,fixgen_all, dt)
 message("R: Melting dataframe...")
 FLUX_ALL = melt(generations, id='V1')
 
-if(gc==10){
-    df = cbind(stabil_0,stabil_1,stabil_2,stabil_3,stabil_4,stabil_5,stabil_6,stabil_7,stabil_8,stabil_9)
-    #df = cbind(stabil_0,stabil_1,stabil_2,stabil_3,stabil_4,stabil_5,stabil_6,stabil_7,stabil_8)
-    tf = as.data.frame(t(df))
-    colnames(tf)[1:(ncol(tf))]=seq(0,fixgen, dt)
-    tf$Gene = c(0,1,2,3,4,5,6,7,8,9)
-    #tf$Gene = c(0,1,2,3,4,5,6,7,8)
-    GENE = melt(tf, id='Gene')
-} else {
-    df = stabil_0
-    tf = as.data.frame(t(df))
-    colnames(tf)[1:(ncol(tf))]=seq(0,fixgen, dt)
-    tf$Gene = c(0)
-    GENE = melt(tf, id='Gene')
-}
+#df = cbind(stabil_0,stabil_1,stabil_2,stabil_3,stabil_4,stabil_5,stabil_6,stabil_7,stabil_8,stabil_9)
+#df = cbind(stabil_0,stabil_1,stabil_2,stabil_3,stabil_4,stabil_5,stabil_6,stabil_7,stabil_8)
+#tf = as.data.frame(t(df))
+#colnames(tf)[1:(ncol(tf))]=seq(0,fixgen, dt)
+#tf$Gene = c(0,1,2,3,4,5,6,7,8,9)
+#tf$Gene = c(0,1,2,3,4,5,6,7,8)
+#tf$Gene = c(0)
+#GENE = melt(tf, id='Gene')
 
 message("R: Saving plot a to file...")
 
@@ -109,7 +100,6 @@ theme_Publication <- function(base_size=18, base_family="Helvetica") {
 a = ggplot(avg_fitness, aes(x=gen,y=V1)) + geom_line() + theme_Publication() + labs(x = "Generations",y="Average fitness")
 ggsave("fitness.png", plot=last_plot(), path = paste(dir,src,"graph/",sep=""), width = 11, height = 8.5, dpi=300)
 
-if(fixgen>1){
 message("R: Saving plot b to file...")
 b = ggplot(FLUX, aes(x=factor(variable),y=value,group=V1,colour=V1)) + geom_area(aes(fill=V1),alpha=0.5) + theme_Publication() + scale_color_discrete(guide=FALSE) + scale_fill_discrete(guide=FALSE) + scale_x_discrete(limits=0:fixgen, breaks = seq(0,fixgen,step)) +
   labs(x = "Generations",y="Count")
@@ -129,14 +119,13 @@ d = ggplot(FLUX_ALL, aes(x=factor(variable),y=log10(value),group=V1,colour=V1)) 
 labs(x = "Generations",y="Log10(Count)")
 d$theme$plot.margin = unit(c(0.5,1,0.5,0.5),"cm")
 ggsave("log_clonal_trajectories.png", plot=d, path = paste(dir,src,"graph/",sep=""), width = 11, height = 8.5, dpi=300)
-}
 
-e = ggplot(GENE, aes(x=factor(variable),y=value,group=factor(Gene),colour=factor(Gene))) + 
-    geom_line(size = 0.75) + scale_color_viridis_d(name = "Gene ID",option = "C") + theme_Publication() + 
-    scale_x_discrete(limits=0:fixgen, breaks = seq(0,fixgen,step)) + labs(x = "Generations",y="Stability (∆G, kcal/mol)") + 
-    guides(color = guide_legend(order = 2, override.aes = list(shape = 15, size = 9)), shape = guide_legend(order = 1))
-e$theme$plot.margin = unit(c(0.5,1,0.5,0.5),"cm")
-ggsave("stability_trajectories.png", plot=e, path = paste(dir,src,"graph/",sep=""), width = 11, height = 8.5, dpi=300)
+#e = ggplot(GENE, aes(x=factor(variable),y=value,group=factor(Gene),colour=factor(Gene))) + 
+#    geom_line(size = 0.75) + scale_color_viridis_d(name = "Gene ID",option = "C") + theme_Publication() + 
+#    scale_x_discrete(limits=0:fixgen, breaks = seq(0,fixgen,step)) + labs(x = "Generations",y="Stability (∆G, kcal/mol)") + 
+#    guides(color = guide_legend(order = 2, override.aes = list(shape = 15, size = 9)), shape = guide_legend(order = 1))
+#e$theme$plot.margin = unit(c(0.5,1,0.5,0.5),"cm")
+#ggsave("stability_trajectories.png", plot=e, path = paste(dir,src,"graph/",sep=""), width = 11, height = 8.5, dpi=300)
 
 #ggsave("log_clonal_trajectories.eps", plot=d, path = paste(dir,src,"graph/",sep=""), width = 11, height = 8.5, dpi=600)
 #ggsave("clonal_structure.eps", plot=b, device=cairo_ps, fallback_resolution = 300, path = paste(dir,src,"graph/",sep=""), width = 11, height = 8.5, dpi=600)
