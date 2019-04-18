@@ -219,8 +219,7 @@ int main(int argc, char *argv[])
         }catch (std::runtime_error &e) {}
     }
 
-    /* OPEN PANGENOME EVOLUTION EVENTS LOGS if the -V and -T command-line options are enabled
-        */
+    // OPEN PANGENOME EVOLUTION EVENTS LOGS if the -V and -T command-line options are enabled
     std::ofstream PANGENOMES_EVOLUTION_LOG;
     std::ofstream CELL_GENE_CONTENT_LOG;
 	std::ofstream GENE_GAIN_EVENTS_LOG;
@@ -228,10 +227,10 @@ int main(int argc, char *argv[])
 	if(simul_pangenomes_evolution && track_pangenomes_evolution){
 		try{
 			openPevLog(PANGENOMES_EVOLUTION_LOG, outDir);
-			openCellsgenecontentLog(GENE_GAIN_EVENTS_LOG, outDir);
+			openCellsgenecontentLog(CELL_GENE_CONTENT_LOG, outDir);
 			openGainLog(GENE_GAIN_EVENTS_LOG, outDir);
 			openLossLog(GENE_LOSS_EVENTS_LOG, outDir);
-		}catch (std::runtime_error &e) {}
+		}catch (std::runtime_error &er) {}
 	}
 
 

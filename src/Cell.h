@@ -91,7 +91,7 @@ public:
 
     double getSelCoeffCurrentMutation() const;
     void setSelCoeffCurrentMutation(double selCoeffCurrentMutation);
-    void dumpCellGeneContent(std::ofstream&,int);
+    void dumpCellGeneContent(std::ofstream&,int) const;
     /**** HGT ****/
 
     void PrintCell(int) const;

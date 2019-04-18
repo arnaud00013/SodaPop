@@ -620,9 +620,9 @@ void Cell::setSelCoeffCurrentMutation(double selCoeffCurrentMutation) {
     sel_coeff_current_mutation = selCoeffCurrentMutation;
 }
 
-void Cell::dumpCellGeneContent(std::ofstream& OUT, int GEN_CTR) {
+void Cell::dumpCellGeneContent(std::ofstream& OUT, int GEN_CTR) const {
     for(auto gene_it = this->genomeVec_.begin(); gene_it != this->genomeVec_.end(); ++gene_it){
-        OUT <<GEN_CTR<<"\t"<<this->ID()<<"\t"<<gene_it->num()<<"\t"<<gene_it->geneSeq()<<std::endl;
+        OUT << GEN_CTR << "\t" << this->ID() << "\t" << gene_it->num() << "\t" << gene_it->geneSeq() << std::endl;
     }
 }
 

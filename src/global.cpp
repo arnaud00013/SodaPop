@@ -317,7 +317,6 @@ void openGainLog(std::ofstream& gainlog, std::string outDir){
 		//d_cell is the donor cell and r_cell is the receiving cell
 		gainlog <<"gain_event_ID"<<"\t"<<"Generation_ctr"<<"\t"<<"d_cell_ID"<<"\t"<<"d_cell_barcode"<<"\t"<<"r_cell_ID"<<"\t"<<"r_cell_barcode"<<"\t"<<"gene_ID"<<std::endl;
 	}
-
 }
 
 void openLossLog(std::ofstream& losslog, std::string outDir){
