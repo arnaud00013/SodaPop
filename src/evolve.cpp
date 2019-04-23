@@ -198,6 +198,7 @@ int main(int argc, char *argv[])
     */
     if (Cell::ff_ == 7) {
         noMut = true;
+        Population::noMut = true;
         std::cout << "Mutations are not active." << std::endl;
     }
 
@@ -278,7 +279,7 @@ int main(int argc, char *argv[])
         }
         currentPop.simul_pev_before_cell_division(PANGENOMES_EVOLUTION_LOG, CELL_GENE_CONTENT_LOG, GENE_GAIN_EVENTS_LOG, GENE_LOSS_EVENTS_LOG, nb_gain_to_sim, nb_loss_to_sim, gain_event_ctr, loss_event_ctr, total_nb_event_pev_to_sim, ratio_gain_current_gen, lambda_plus, lambda_minus, r_prime, a_for_s_x, b_for_s_x, simul_pangenomes_evolution, track_pangenomes_evolution,currentGen,timeStep);
 
-        currentPop.divide(targetBuffer, targetPopSize, MUTATIONLOG,!noMut);
+        currentPop.divide(targetBuffer, targetPopSize, MUTATIONLOG,(trackMutations && !noMut));
 
         // update generation counter
         ++currentGen;

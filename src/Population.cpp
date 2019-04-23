@@ -6,14 +6,18 @@ bool Population::noMut = false;
 
 Population::Population():
     size_(0),
-    sumFitness_(0)
+    sumFitness_(0),
+	mutationCounter_(0),
+	generation_(0)
 {
 	cells_.reserve(1000);
 }
 
 Population::Population(int targetSize):
     size_(0),
-    sumFitness_(0)
+    sumFitness_(0),
+	mutationCounter_(0),
+	generation_(0)
 {
     size_ = 0;
     cells_.reserve(targetSize);
@@ -21,7 +25,9 @@ Population::Population(int targetSize):
 
 Population::Population(std::ifstream& startFile,const std::string & genesPath, int targetSize, Init_Pop popType):
     size_(0),
-    sumFitness_(0)
+    sumFitness_(0),
+	mutationCounter_(0),
+	generation_(0)
 {
 	if(popType==Init_Pop::from_snapFile){
 		initPolyclonal(startFile, genesPath, targetSize);
@@ -154,7 +160,7 @@ void Population::divide(int targetBuffer, int targetSize, std::ofstream& LOG, bo
             ++link;
         }while(link < last);
 
-        if(!Population::noMut){
+        if(!(Population::noMut)){
             // after filling with children, go through each one for mutation
                 do{
                 std::binomial_distribution<> binMut(it->genome_size(), it->mrate());
