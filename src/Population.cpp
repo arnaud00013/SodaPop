@@ -129,7 +129,7 @@ void Population::divide(int targetBuffer, int targetSize, std::ofstream& LOG, bo
     Population newPopulation(targetBuffer);
     double relative_fitness(1);
     int n_progeny(0);
-    for (const auto& cell : cells_) {
+    for (auto& cell : cells_) {
 
         // fitness of cell j with respect to sum of population fitness
         relative_fitness = cell.fitness()/getSumFitness();
