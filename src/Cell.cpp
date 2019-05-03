@@ -582,7 +582,7 @@ int Cell::remove_rand_gene(const double & a_for_s_x,const double & b_for_s_x) {
     this->FillGene_L();
     //s_loss(x) = -s_gain(x)
     this->set_PevFe(-1*(a_for_s_x + (b_for_s_x * this->gene_count())));
-    this->ch_Fitness(this->fitness() + (this->get_PevFe()));
+    this->ch_Fitness(this->fitness() * (1 + (this->get_PevFe())));
     return ID_removed_gene;
 }
 
@@ -595,7 +595,7 @@ int Cell::add_gene(const double & a_for_s_x,const double & b_for_s_x) {
     this->geneBlocks_.reserve(this->gene_count()+1);
     this->FillGene_L();
     this->set_PevFe(a_for_s_x + (b_for_s_x * this->gene_count()));
-    this->ch_Fitness(this->fitness() + (this->get_PevFe()));
+    this->ch_Fitness(this->fitness() * (1+ (this->get_PevFe())));
     return Cell::selected_gene.num();
 }
 
