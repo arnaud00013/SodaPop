@@ -19,6 +19,7 @@ public:
 	void writeSnapshotHeader(std::ofstream&, Encoding_Type);
 	void writePop(std::ofstream&, Encoding_Type);
 
+	void zip_PEV_Logs(std::ofstream&, std::string, Encoding_Type);
 	void simul_pev_before_cell_division(std::ofstream& pev_log,std::ofstream& cells_gene_content_log,std::ofstream& gain_log,std::ofstream& loss_log, int& nb_gain_to_sim, int& nb_loss_to_sim, int& gain_event_ctr,int& loss_event_ctr,int& total_nb_event_pev_to_sim, double& ratio_gain_current_gen, double& lambda_plus, double& lambda_minus, double& r_prime, double& a_for_s_x, double& b_for_s_x, bool& simul_pangenomes_evolution, bool& track_pangenomes_evolution, int& GENERATION_CTR, int& DT);
 	void divide(int, int, std::ofstream&, bool);
 
