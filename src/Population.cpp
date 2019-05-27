@@ -353,12 +353,10 @@ void Population::simul_pev_before_cell_division(std::ofstream& pev_log,
 
 }
 
-void Population::zip_PEV_Logs(std::ofstream& toSnapshot, std::string the_outputDir, std::string the_file, Encoding_Type encoding) {
+void Population::zip_PEV_Logs(std::string the_outputDir, std::string the_file, Encoding_Type encoding) {
 	sprintf(buffer,"%s/%s",the_outputDir.c_str(),the_file.c_str());
-	// Open buffer file
-	toSnapshot = std::ofstream(buffer, std::ios::out | std::ios::binary);
-	if (toSnapshot.is_open()){
-		toSnapshot.close();
+
+	if (access( buffer, F_OK ) != -1){
 		// compress
 		std::string command = "gzip -f ";
 		command += buffer;
