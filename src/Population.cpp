@@ -373,8 +373,10 @@ void Population::zip_PEV_Logs(std::string the_outputDir, std::string the_file, E
 
 	}
 	else{
-		// error opening file, throw exception
-		throw std::runtime_error("Unable to open file for output.");
+		// error file does not exist -> throw exception
+		std::string msg_err = "Error! The file you want to zip does not exist. The file you wanted to zip is: ";
+		msg_err += buffer;
+		throw std::runtime_error(msg_err);
 	}
 
 }
