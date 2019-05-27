@@ -300,13 +300,14 @@ int main(int argc, char *argv[])
 		GENE_GAIN_EVENTS_LOG.close();
 		GENE_LOSS_EVENTS_LOG.close();
 		std::ofstream OUT_PEV_LOG;
-		currentPop.zip_PEV_Logs(OUT_PEV_LOG,outDir,"PANGENOMES_EVOLUTION_LOG.txt",outputEncoding);
+		std::string sim_out_dir = "out/"+outDir;
+		currentPop.zip_PEV_Logs(OUT_PEV_LOG,sim_out_dir,"PANGENOMES_EVOLUTION_LOG.txt",outputEncoding);
 		std::ofstream OUT_CELL_GENE_CONTENT_LOG;
-		currentPop.zip_PEV_Logs(OUT_CELL_GENE_CONTENT_LOG,outDir,"CELL_GENE_CONTENT_LOG.txt",outputEncoding);
+		currentPop.zip_PEV_Logs(OUT_CELL_GENE_CONTENT_LOG,sim_out_dir,"CELL_GENE_CONTENT_LOG.txt",outputEncoding);
 		std::ofstream OUT_GENE_GAIN_EVENTS_LOG;
-		currentPop.zip_PEV_Logs(OUT_GENE_GAIN_EVENTS_LOG,outDir,"GENE_GAIN_EVENTS_LOG.txt",outputEncoding);
+		currentPop.zip_PEV_Logs(OUT_GENE_GAIN_EVENTS_LOG,sim_out_dir,"GENE_GAIN_EVENTS_LOG.txt",outputEncoding);
 		std::ofstream OUT_GENE_LOSS_EVENTS_LOG;
-		currentPop.zip_PEV_Logs(OUT_GENE_LOSS_EVENTS_LOG,outDir,"GENE_LOSS_EVENTS_LOG.txt",outputEncoding);
+		currentPop.zip_PEV_Logs(OUT_GENE_LOSS_EVENTS_LOG,sim_out_dir,"GENE_LOSS_EVENTS_LOG.txt",outputEncoding);
 	}
     std::cout << "Done." << std::endl;
     CMDLOG << "Done." << std::endl;
