@@ -366,7 +366,7 @@ void Population::zip_PEV_Logs(std::ofstream& toSnapshot, std::string the_outputD
 		system(cmd);
 		// remove orginal unzipped file
 		std::string sec_command = "rm -f ";
-		command += buffer;
+		sec_command += buffer;
 		cmd = sec_command.c_str();
 		system(cmd);
 	}
