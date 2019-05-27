@@ -353,23 +353,27 @@ void Population::simul_pev_before_cell_division(std::ofstream& pev_log,
 
 }
 
-void Population::zip_PEV_Logs(std::ofstream& toSnapshot, std::string the_file, Encoding_Type encoding) {
-	sprintf(buffer,"%s/%s",outPath.c_str(),the_file.c_str());
-
-	    // Open snapshot file
-	    toSnapshot = std::ofstream(buffer, std::ios::out | std::ios::binary);
-	    if (toSnapshot.is_open()){
-	        toSnapshot.close();
-	        // compress
-	        std::string command = "gzip -f ";
-	        command += buffer;
-	        const char *cmd = command.c_str();
-	        system(cmd);
-	    }
-	    else{
-	        // error opening file, throw exception
-	        throw std::runtime_error("Unable to open file for output.");
-	    }
+void Population::zip_PEV_Logs(std::ofstream& toSnapshot, std::string the_outputDir, std::string the_file, Encoding_Type encoding) {
+	sprintf(buffer,"%s/%s",the_outputDir.c_str(),the_file.c_str());
+	// Open buffer file
+	toSnapshot = std::ofstream(buffer, std::ios::out | std::ios::binary);
+	if (toSnapshot.is_open()){
+		toSnapshot.close();
+		// compress
+		std::string command = "gzip -f ";
+		command += buffer;
+		const char *cmd = command.c_str();
+		system(cmd);
+		// remove orginal unzipped file
+		std::string sec_command = "rm -f ";
+		command += buffer;
+		cmd = sec_command.c_str();
+		system(cmd);
+	}
+	else{
+		// error opening file, throw exception
+		throw std::runtime_error("Unable to open file for output.");
+	}
 }
 
 double Population::addSumFitness(double w){
