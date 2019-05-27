@@ -371,11 +371,6 @@ void Population::zip_PEV_Logs(std::ofstream& toSnapshot, std::string the_outputD
 		throw std::runtime_error("Unable to open file for output.");
 	}
 
-	// remove orginal unzipped file
-	std::string sec_command = "rm -f ";
-	sec_command += buffer;
-	const char *sec_cmd = sec_command.c_str();
-	system(sec_cmd);
 }
 
 double Population::addSumFitness(double w){
