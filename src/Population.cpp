@@ -290,7 +290,7 @@ void Population::simul_pev_before_cell_division(std::ofstream& pev_log,
 		std::ofstream& loss_log, int& nb_gain_to_sim, int& nb_loss_to_sim,
 		int& gain_event_ctr, int& loss_event_ctr,
 		int& total_nb_event_pev_to_sim, double& ratio_gain_current_gen,
-		double& lambda_plus, double& lambda_minus, double& r_prime,
+		double& lambda_plus, double& lambda_minus, double& r_prime, double& s_prime,
 		double& a_for_s_x, double& b_for_s_x, bool& simul_pangenomes_evolution,
 		bool& track_pangenomes_evolution, int& GENERATION_CTR, int& DT) {
 
@@ -303,7 +303,7 @@ void Population::simul_pev_before_cell_division(std::ofstream& pev_log,
 			nb_gain_to_sim = 0;
 			nb_loss_to_sim = 0;
 			// number of gain event
-			nb_gain_to_sim = round((pow(cell.gene_count(),lambda_plus)));
+			nb_gain_to_sim = round((s_prime * pow(cell.gene_count(),lambda_plus)));
 			// number of loss event
 			nb_loss_to_sim = round((r_prime*pow(cell.gene_count(),lambda_minus)));
 			//Total number of pangenome evolution (gain and loss) events to simulate in the current generation

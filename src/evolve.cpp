@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
     double lambda_plus = 0;
     double lambda_minus = 0;
     double r_prime = 0;
+    double s_prime = 0;
     double a_for_s_x = 0;
     double b_for_s_x = 0;
 
@@ -103,7 +104,10 @@ int main(int argc, char *argv[])
         TCLAP::ValueArg<double> b_Arg("","bForSx","parameter b to calculate s(x)",false,1,"double");
 
         //parameter r_prime to calculate r(x)
-        TCLAP::ValueArg<double> r_prime_Arg("","rPrime","parameter rPrime to calculate r(x)",false,1,"double");
+        TCLAP::ValueArg<double> r_prime_Arg("","rPrime","parameter rPrime to calculate beta(x)",false,1,"double");
+
+        //parameter s_prime to calculate r(x)
+		TCLAP::ValueArg<double> s_prime_Arg("","sPrime","parameter sPrime to calculate alpha(x))",false,1,"double");
 
         //parameter lambda_plus to calculate alpha(x)
         TCLAP::ValueArg<double> lambda_plus_Arg("","lambdaPlus","parameter lambdaPlus to calculate alpha(x)",false,1,"double");
@@ -131,6 +135,7 @@ int main(int argc, char *argv[])
         cmd.add(a_Arg);
         cmd.add(b_Arg);
         cmd.add(r_prime_Arg);
+        cmd.add(s_prime_Arg);
         cmd.add(lambda_plus_Arg);
         cmd.add(lambda_minus_Arg);
         /*## HGT ##*/
@@ -184,6 +189,7 @@ int main(int argc, char *argv[])
         lambda_plus = lambda_plus_Arg.getValue();
         lambda_minus = lambda_minus_Arg.getValue();
         r_prime = r_prime_Arg.getValue();
+        s_prime = s_prime_Arg.getValue();
         a_for_s_x = a_Arg.getValue();
         b_for_s_x = b_Arg.getValue();
         /*## HGT ##*/
@@ -277,7 +283,7 @@ int main(int argc, char *argv[])
         if (simul_pangenomes_evolution){
         	Cell::ff_ = 0;
         }
-        currentPop.simul_pev_before_cell_division(PANGENOMES_EVOLUTION_LOG, CELL_GENE_CONTENT_LOG, GENE_GAIN_EVENTS_LOG, GENE_LOSS_EVENTS_LOG, nb_gain_to_sim, nb_loss_to_sim, gain_event_ctr, loss_event_ctr, total_nb_event_pev_to_sim, ratio_gain_current_gen, lambda_plus, lambda_minus, r_prime, a_for_s_x, b_for_s_x, simul_pangenomes_evolution, track_pangenomes_evolution,currentGen,timeStep);
+        currentPop.simul_pev_before_cell_division(PANGENOMES_EVOLUTION_LOG, CELL_GENE_CONTENT_LOG, GENE_GAIN_EVENTS_LOG, GENE_LOSS_EVENTS_LOG, nb_gain_to_sim, nb_loss_to_sim, gain_event_ctr, loss_event_ctr, total_nb_event_pev_to_sim, ratio_gain_current_gen, lambda_plus, lambda_minus, r_prime, s_prime, a_for_s_x, b_for_s_x, simul_pangenomes_evolution, track_pangenomes_evolution,currentGen,timeStep);
 
         currentPop.divide(targetBuffer, targetPopSize, MUTATIONLOG,(trackMutations && !noMut));
 
