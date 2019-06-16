@@ -344,7 +344,7 @@ void Population::simul_pev_before_cell_division(std::ofstream& pev_log,
 
 			//If the user activated the option to get pangenome evolution feedbacks, save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG at each DT generations where DT is the time-step. Do the same for cell gene content log with the appropriated fields.
 			if (track_pangenomes_evolution && (((GENERATION_CTR % DT) == 0) || GENERATION_CTR==1)){
-				pev_log <<GENERATION_CTR<<"\t"<<cell.ID()<<"\t"<<(cell.gene_count())<<"\t"<<(r_prime*pow(cell.gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell.gene_count(),lambda_minus))<<"\t"<<pow(cell.gene_count(),lambda_plus)<<"\t"<<cell.fitness()<<std::endl;
+				pev_log <<GENERATION_CTR<<"\t"<<cell.ID()<<"\t"<<(cell.gene_count())<<"\t"<<((1/s_prime)*r_prime*pow(cell.gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell.gene_count(),lambda_minus))<<"\t"<<s_prime*pow(cell.gene_count(),lambda_plus)<<"\t"<<cell.fitness()<<std::endl;
 				cell.dumpCellGeneContent(cells_gene_content_log,GENERATION_CTR);
 			}
 		}
