@@ -287,7 +287,7 @@ void Population::writePop(std::ofstream& toSnapshot, Encoding_Type encoding){
 
 void Population::simul_pev_before_cell_division(std::ofstream& pev_log,
 		std::ofstream& cells_gene_content_log, std::ofstream& gain_log,
-		std::ofstream& loss_log, int& nb_gain_to_sim, int& nb_loss_to_sim,
+		std::ofstream& loss_log, double& nb_gain_to_sim, double& nb_loss_to_sim,
 		int& gain_event_ctr, int& loss_event_ctr,
 		int& total_nb_event_pev_to_sim, double& ratio_gain_current_gen,
 		double& lambda_plus, double& lambda_minus, double& r_prime, double& s_prime,
@@ -307,7 +307,7 @@ void Population::simul_pev_before_cell_division(std::ofstream& pev_log,
 			// number of loss event
 			nb_loss_to_sim = ((r_prime*pow(cell.gene_count(),lambda_minus)));
 			//Total number of pangenome evolution (gain and loss) events to simulate in the current generation
-			total_nb_event_pev_to_sim = nb_gain_to_sim + nb_loss_to_sim;
+			total_nb_event_pev_to_sim = round(nb_gain_to_sim + nb_loss_to_sim);
 			double nb_gain_for_ratio = nb_gain_to_sim;
 			double nb_loss_for_ratio = nb_loss_to_sim;
 
