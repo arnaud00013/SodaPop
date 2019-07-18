@@ -285,10 +285,10 @@ double Gene::Mutate_Select_Dist(int i, int j)
 
 	if(the_gene_new_aa!=the_gene_old_aa){ //Non-synonymous
 		if (randomNumber()<0.7){
-			s = RandomNormal(); //70% of non-synonymous mutations follows the distribution
+			s = RandomNormal(); //little fitness effect (around neutral) represents 70% of the mutation fitness distribution
 			Na_ += 1;
 		}else{
-			s = -1; //lethal mutations represents 30% of non-synonymous mutations
+			s = -1; //lethal mutations represents the rest of the mutation fitness distribution
 			Na_ += 1;
 		}
 

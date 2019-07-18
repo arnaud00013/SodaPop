@@ -222,7 +222,7 @@ void Population::divide(int targetBuffer, int targetSize, std::ofstream& LOG, bo
             cell.UpdateNsNa();
         }
         //normalize by fittest individual to prevent overflow
-        if (Population::simType == Input_Type::selection_coefficient && (Cell::ff_ == 5)){
+        if ((Population::simType == Input_Type::selection_coefficient && (Cell::ff_ == 5)) || (Population::simType == Input_Type::selection_coefficient && (Cell::ff_ == 9))){
             for (auto& cell : cells_) {
                 cell.normalizeFit(fittest);
             }
