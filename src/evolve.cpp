@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
         //Pangenome evolution events
         //If the user chose to simulate pangenome evolution select automatically the "multiplicative_without_genes_fit_mean" fitness function
         if (simul_pangenomes_evolution){
-        	Cell::ff_ = 0;
+        	Cell::ff_ = 9;
         }
         currentPop.simul_pev_before_cell_division(CELL_GENE_CONTENT_LOG, GENE_GAIN_EVENTS_LOG, GENE_LOSS_EVENTS_LOG, expected_nb_gain_events, expected_nb_loss_events, ctr_nb_gain_events, ctr_nb_loss_events, total_nb_event_pev_to_sim, ratio_gain_current_gen, lambda_plus, lambda_minus, r_prime, s_prime, a_for_s_x, b_for_s_x, simul_pangenomes_evolution, track_pangenomes_evolution,currentGen,timeStep);
 
