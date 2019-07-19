@@ -124,7 +124,7 @@ void Population::initPolyclonal(std::ifstream& startFile,const std::string & gen
     size_ = count;
 }
 
-void Population::divide(int targetBuffer, int targetSize, std::ofstream& LOG, bool use_mut_log){
+void Population::divide(int targetBuffer, int targetSize, std::ofstream& LOG, bool use_mut_log,std::ofstream& pev_log, bool& track_pangenomes_evolution,double& lambda_plus, double& lambda_minus, double& r_prime, double& s_prime, int& GENERATION_CTR, int& DT){
     // allocate space for temporary population
     Population newPopulation(targetBuffer);
     double relative_fitness(1);
@@ -222,9 +222,13 @@ void Population::divide(int targetBuffer, int targetSize, std::ofstream& LOG, bo
             cell.UpdateNsNa();
         }
         //normalize by fittest individual to prevent overflow
-        if ((Population::simType == Input_Type::selection_coefficient && (Cell::ff_ == 5)) || (Population::simType == Input_Type::selection_coefficient && (Cell::ff_ == 9))){
+        if ((Population::simType == Input_Type::selection_coefficient && (Cell::ff_ == 5)) || (Cell::ff_ == 9)){
             for (auto& cell : cells_) {
                 cell.normalizeFit(fittest);
+		//If the user activated the option to get pangenome evolution feedbacks, save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG at each DT generations where DT is the time-step. Do the same for cell gene content log with the appropriated fields.
+		if (track_pangenomes_evolution && (((GENERATION_CTR % DT) == 0) || GENERATION_CTR==1)){
+			pev_log <<GENERATION_CTR<<"\t"<<cell.ID()<<"\t"<<(cell.gene_count())<<"\t"<<((1/s_prime)*r_prime*pow(cell.gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell.gene_count(),lambda_minus))<<"\t"<<s_prime*pow(cell.gene_count(),lambda_plus)<<"\t"<<cell.fitness()<<std::endl;
+		}
             }
         }
 }
@@ -285,8 +289,7 @@ void Population::writePop(std::ofstream& toSnapshot, Encoding_Type encoding){
     }
 }
 
-void Population::simul_pev_before_cell_division(std::ofstream& pev_log,
-		std::ofstream& cells_gene_content_log, std::ofstream& gain_log,
+void Population::simul_pev_before_cell_division(std::ofstream& cells_gene_content_log, std::ofstream& gain_log,
 		std::ofstream& loss_log, double& nb_gain_to_sim, double& nb_loss_to_sim,
 		int& gain_event_ctr, int& loss_event_ctr,
 		int& total_nb_event_pev_to_sim, double& ratio_gain_current_gen,
@@ -342,9 +345,8 @@ void Population::simul_pev_before_cell_division(std::ofstream& pev_log,
 				}
 			}
 
-			//If the user activated the option to get pangenome evolution feedbacks, save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG at each DT generations where DT is the time-step. Do the same for cell gene content log with the appropriated fields.
+			//If the user activated the option to get pangenome evolution feedbacks, save cell gene content log with the appropriated fields (pangenome information are saved after fitness normalization in divide()).
 			if (track_pangenomes_evolution && (((GENERATION_CTR % DT) == 0) || GENERATION_CTR==1)){
-				pev_log <<GENERATION_CTR<<"\t"<<cell.ID()<<"\t"<<(cell.gene_count())<<"\t"<<((1/s_prime)*r_prime*pow(cell.gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell.gene_count(),lambda_minus))<<"\t"<<s_prime*pow(cell.gene_count(),lambda_plus)<<"\t"<<cell.fitness()<<std::endl;
 				cell.dumpCellGeneContent(cells_gene_content_log,GENERATION_CTR);
 			}
 		}

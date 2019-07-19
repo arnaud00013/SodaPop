@@ -283,9 +283,9 @@ int main(int argc, char *argv[])
         if (simul_pangenomes_evolution){
         	Cell::ff_ = 0;
         }
-        currentPop.simul_pev_before_cell_division(PANGENOMES_EVOLUTION_LOG, CELL_GENE_CONTENT_LOG, GENE_GAIN_EVENTS_LOG, GENE_LOSS_EVENTS_LOG, expected_nb_gain_events, expected_nb_loss_events, ctr_nb_gain_events, ctr_nb_loss_events, total_nb_event_pev_to_sim, ratio_gain_current_gen, lambda_plus, lambda_minus, r_prime, s_prime, a_for_s_x, b_for_s_x, simul_pangenomes_evolution, track_pangenomes_evolution,currentGen,timeStep);
+        currentPop.simul_pev_before_cell_division(CELL_GENE_CONTENT_LOG, GENE_GAIN_EVENTS_LOG, GENE_LOSS_EVENTS_LOG, expected_nb_gain_events, expected_nb_loss_events, ctr_nb_gain_events, ctr_nb_loss_events, total_nb_event_pev_to_sim, ratio_gain_current_gen, lambda_plus, lambda_minus, r_prime, s_prime, a_for_s_x, b_for_s_x, simul_pangenomes_evolution, track_pangenomes_evolution,currentGen,timeStep);
 
-        currentPop.divide(targetBuffer, targetPopSize, MUTATIONLOG,(trackMutations && !noMut));
+        currentPop.divide(targetBuffer, targetPopSize, MUTATIONLOG,(trackMutations && !noMut),PANGENOMES_EVOLUTION_LOG,track_pangenomes_evolution,lambda_plus, lambda_minus, r_prime, s_prime,currentGen,timeStep);
 
         // update generation counter
         ++currentGen;
