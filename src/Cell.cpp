@@ -14,6 +14,7 @@ Cell::Cell():
     o_mrate_(0),
     c_mrate_(0),
     fitness_(0),
+    abs_fitness_(0),
     pev_fe(0),
     sel_coeff_current_mutation(0)
     {
@@ -53,6 +54,7 @@ Cell::Cell(std::ifstream & cell_in) {
         else if (word == "fitness") {
             iss >> word;
             fitness_ = atof(word.c_str());
+            abs_fitness_ = fitness_;
         } else if (word == "G") {
             //reading gene files; 
             //concentration and stability from gene file take precedence
@@ -115,6 +117,7 @@ Cell::Cell(std::ifstream & IN,
 
     IN.read((char*)(&f), sizeof(double));
     fitness_ = f;
+    abs_fitness_ = fitness_;
 
     IN.read((char*)(&m), sizeof(double));
     c_mrate_ = m;
@@ -185,6 +188,11 @@ void Cell::linkGenes()
 double Cell::fitness() const
 {
     return fitness_;
+}
+
+double Cell::abs_fitness() const
+{
+    return abs_fitness_;
 }
 
 // Initialize the cummulative gene length array
@@ -334,6 +342,7 @@ double Cell::multiplicative_without_genes_fit_mean() const
 
 void Cell::UpdateRates()
 {
+    this->ch_abs_Fitness(abs_fitness()*(1.0+getSelCoeffCurrentMutation()));
     fitness_ = (this->*fit)();
 }
 
@@ -455,7 +464,6 @@ double Cell::normalizeFit(double fittest){
     }
     double newfit = fitness()/fittest;
     ch_Fitness(newfit);
-    UpdateRates();
     return newfit;
 }
 
@@ -583,6 +591,7 @@ int Cell::remove_rand_gene(const double & a_for_s_x,const double & b_for_s_x) {
     //s_loss(x) = -s_gain(x)
     this->set_PevFe(-1*(a_for_s_x + (b_for_s_x * this->gene_count())));
     this->ch_Fitness(this->fitness() * (1 + (this->get_PevFe())));
+    this->ch_abs_Fitness(this->abs_fitness() * (1 + (this->get_PevFe())));
     return ID_removed_gene;
 }
 
@@ -596,6 +605,7 @@ int Cell::add_gene(const double & a_for_s_x,const double & b_for_s_x) {
     this->FillGene_L();
     this->set_PevFe(a_for_s_x + (b_for_s_x * this->gene_count()));
     this->ch_Fitness(this->fitness() * (1+ (this->get_PevFe())));
+    this->ch_abs_Fitness(this->abs_fitness() * (1 + (this->get_PevFe())));
     return Cell::selected_gene.num();
 }
 

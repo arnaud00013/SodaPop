@@ -52,12 +52,14 @@ public:
     int genome_size() const {return geneBlocks_.back();}
     std::string barcode() const {return barcode_;}
     double fitness() const;
+    double abs_fitness() const;
 
     void change_ID(int a) {ID_ = a;}
     void setParent(uint32_t a) {parent_ = a;}
     void ch_barcode(std::string s) {barcode_ = s;}
 
     void ch_Fitness(double f){fitness_ = f;}
+    void ch_abs_Fitness(double f){abs_fitness_ = f;}
 
     // Fitness functions
     void selectFitness();
@@ -116,8 +118,11 @@ protected:
     // current mutation rate
     double c_mrate_;
 
-    // organismal fitness
+    // organismal fitness (relative to fittest)
     double fitness_;
+
+    // ABSOLUTE fitness
+    double abs_fitness_;
 
     /**** HGT ****/
     //Pangenome evolution event (gain or loss of genes) fitness effect

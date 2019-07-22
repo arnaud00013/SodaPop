@@ -226,9 +226,9 @@ void Population::divide(int targetBuffer, int targetSize, std::ofstream& LOG, bo
 	if ((Population::simType == Input_Type::selection_coefficient && (Cell::ff_ == 5)) || (Population::simType == Input_Type::selection_coefficient && (Cell::ff_ == 9))){
 	    for (auto& cell : cells_) {
 		cell.normalizeFit(fittest);
-		//If the user activated the option to get pangenome evolution feedbacks, save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG at each DT generations where DT is the time-step. Do the same for cell gene content log with the appropriated fields.
+		//If the user activated the option to get pangenome evolution feedbacks, save Feedback on genome size ( x ), loss/gain rate ratio ( r_x ), loss rate Beta_x and gain rate Alpha_x in PANGENOME_LOG at each DT generations where DT is the time-step.
 		if (track_pangenomes_evolution && (((GENERATION_CTR % DT) == 0) || GENERATION_CTR==1)){
-			pev_log <<GENERATION_CTR<<"\t"<<cell.ID()<<"\t"<<(cell.gene_count())<<"\t"<<((1/s_prime)*r_prime*pow(cell.gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell.gene_count(),lambda_minus))<<"\t"<<s_prime*pow(cell.gene_count(),lambda_plus)<<"\t"<<cell.fitness()<<std::endl;
+			pev_log <<GENERATION_CTR<<"\t"<<cell.ID()<<"\t"<<(cell.gene_count())<<"\t"<<((1/s_prime)*r_prime*pow(cell.gene_count(),(lambda_minus-lambda_plus)))<<"\t"<<(r_prime*pow(cell.gene_count(),lambda_minus))<<"\t"<<s_prime*pow(cell.gene_count(),lambda_plus)<<"\t"<<cell.abs_fitness()<<std::endl;
 		}
 	    }
 	}

@@ -182,17 +182,20 @@ int main(int argc, char *argv[])
 
         enableAnalysis = analysisArg.getValue();
         trackMutations = eventsArg.getValue();
-
-        /*## HGT ##*/
-        simul_pangenomes_evolution = pangenomes_evo_Arg.getValue();
-        track_pangenomes_evolution = track_pangenomes_evo_Arg.getValue();
-        lambda_plus = lambda_plus_Arg.getValue();
-        lambda_minus = lambda_minus_Arg.getValue();
-        r_prime = r_prime_Arg.getValue();
-        s_prime = s_prime_Arg.getValue();
-        a_for_s_x = a_Arg.getValue();
-        b_for_s_x = b_Arg.getValue();
-        /*## HGT ##*/
+	
+	// if user want to simulate HGT and loss, set HGT parameters to commandline input
+        if (pangenomes_evo_Arg.isSet()){
+            /*## HGT ##*/
+            simul_pangenomes_evolution = pangenomes_evo_Arg.getValue();
+            track_pangenomes_evolution = track_pangenomes_evo_Arg.getValue();
+            lambda_plus = lambda_plus_Arg.getValue();
+            lambda_minus = lambda_minus_Arg.getValue();
+            r_prime = r_prime_Arg.getValue();
+            s_prime = s_prime_Arg.getValue();
+            a_for_s_x = a_Arg.getValue();
+            b_for_s_x = b_Arg.getValue();
+            /*## HGT ##*/
+        }
 
         outputEncoding = intToEncoding_Type(seqArg.getValue());
         createPop = intToPop_Type(initArg.getValue());
@@ -282,9 +285,8 @@ int main(int argc, char *argv[])
         //If the user chose to simulate pangenome evolution select automatically the "multiplicative_without_genes_fit_mean" fitness function
         if (simul_pangenomes_evolution){
         	Cell::ff_ = 9;
+		currentPop.simul_pev_before_cell_division(CELL_GENE_CONTENT_LOG, GENE_GAIN_EVENTS_LOG, GENE_LOSS_EVENTS_LOG, expected_nb_gain_events, expected_nb_loss_events, ctr_nb_gain_events, ctr_nb_loss_events, total_nb_event_pev_to_sim, ratio_gain_current_gen, lambda_plus, lambda_minus, r_prime, s_prime, a_for_s_x, b_for_s_x, simul_pangenomes_evolution, track_pangenomes_evolution,currentGen,timeStep);
         }
-        currentPop.simul_pev_before_cell_division(CELL_GENE_CONTENT_LOG, GENE_GAIN_EVENTS_LOG, GENE_LOSS_EVENTS_LOG, expected_nb_gain_events, expected_nb_loss_events, ctr_nb_gain_events, ctr_nb_loss_events, total_nb_event_pev_to_sim, ratio_gain_current_gen, lambda_plus, lambda_minus, r_prime, s_prime, a_for_s_x, b_for_s_x, simul_pangenomes_evolution, track_pangenomes_evolution,currentGen,timeStep);
-
         currentPop.divide(targetBuffer, targetPopSize, MUTATIONLOG,(trackMutations && !noMut),PANGENOMES_EVOLUTION_LOG,track_pangenomes_evolution,lambda_plus, lambda_minus, r_prime, s_prime,currentGen,timeStep);
 
         // update generation counter
