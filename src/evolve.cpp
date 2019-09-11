@@ -42,6 +42,7 @@ int main(int argc, char *argv[])
     int ctr_nb_gain_events = 0;
     int ctr_nb_loss_events = 0;
     int total_nb_event_pev_to_sim = 0;
+    int nb_cpus_for_variant_analysis = 0;
     double ratio_gain_current_gen = 0;
     double lambda_plus = 0;
     double lambda_minus = 0;
@@ -52,6 +53,7 @@ int main(int argc, char *argv[])
 
     bool simul_pangenomes_evolution = false;
     bool track_pangenomes_evolution = false;
+    bool execute_variant_analysis = false;
     /*## HGT ##*/
 
     std::string geneListFile;
@@ -114,6 +116,12 @@ int main(int argc, char *argv[])
 
         //parameter lambda_minus to calculate beta(x)***
         TCLAP::ValueArg<double> lambda_minus_Arg("","lambdaMinus","parameter lambdaMinus to calculate beta(x)",false,1,"double");
+        
+        //Execute variant analysis
+        TCLAP::SwitchArg exec_variant_analysis_Arg("","execVA","Execute variant analysis", cmd, false);
+
+        //number of cpus for variant analysis (if applicable)
+        TCLAP::ValueArg<int> nbCpuVA_Arg("u","nbCpu-VA","Number of cpus used for variant analysis",false,1,"int");
         /*## HGT ##*/
 
         // Add the arguments to the CmdLine object.
@@ -138,6 +146,7 @@ int main(int argc, char *argv[])
         cmd.add(s_prime_Arg);
         cmd.add(lambda_plus_Arg);
         cmd.add(lambda_minus_Arg);
+        cmd.add(nbCpuVA_Arg);
         /*## HGT ##*/
 
         // Parse the argv array.
@@ -194,6 +203,10 @@ int main(int argc, char *argv[])
             s_prime = s_prime_Arg.getValue();
             a_for_s_x = a_Arg.getValue();
             b_for_s_x = b_Arg.getValue();
+            if (exec_variant_analysis_Arg.isSet()){
+                execute_variant_analysis = exec_variant_analysis_Arg.getValue();
+                nb_cpus_for_variant_analysis = nbCpuVA_Arg.getValue();
+            }
             /*## HGT ##*/
         }
 
@@ -328,5 +341,43 @@ int main(int argc, char *argv[])
         const char *cmd = command.c_str();
         system(cmd);
     }
+
+    
+    //Execute the variant analysis in case that the user mentioned it and if mutations were active during simulation. 
+    //WARNING : Rscript directory path needs to be in user system environment to execute this script!!!
+    if (execute_variant_analysis){
+        if (Cell::ff_ == 7){
+            std::cerr << "Cannot execute variant analysis when mutations are not active!";
+            exit(1);
+        }
+        else{
+            std::cout << "Genes variant analysis started!" << std::endl;
+            std::string script = "tools/Post_simulation_genes_variants_analysis.r";
+            std::string sim_wp = geneListFile; //absolute path of Sodapop workspace initialized with gene list file path
+            std::string the_subst_to_remove = "files/genes/gene_list.dat"; //substring of geneListFile to remove to get workspace
+            std::string::size_type the_pos_substr_to_remove = sim_wp.find(the_subst_to_remove);
+
+            if (the_pos_substr_to_remove != std::string::npos){
+                sim_wp.erase(the_pos_substr_to_remove, the_subst_to_remove.length());
+            }
+            //keep a_for_s_x and b_for_s_x digits precision
+            char buffer_a[32];
+            memset(buffer_a, 0, sizeof(buffer_a));
+            snprintf(buffer_a, sizeof(buffer_a), "%g", a_for_s_x);
+            std::string str_a_for_s_x(buffer_a);
+            char buffer_b[32];
+            memset(buffer_b, 0, sizeof(buffer_b));
+            snprintf(buffer_b, sizeof(buffer_b), "%g", b_for_s_x);
+            std::string str_b_for_s_x(buffer_b);
+
+            std::string command = "Rscript "+script+" "+sim_wp+" "+std::to_string(targetPopSize)+" "+std::to_string(timeStep) +" "+outDir+" "+std::to_string(r_prime)+" "+std::to_string(s_prime)+" "+std::to_string(lambda_plus)+" "+std::to_string(lambda_minus)+" "+std::to_string(Cell::ff_)+" "+str_a_for_s_x+" "+str_b_for_s_x+" "+std::to_string(nb_cpus_for_variant_analysis);
+            std::cout << "The command is :" << std::endl;
+            std::cout << command << std::endl;
+            const char *cmd = command.c_str();
+            system(cmd);
+            
+        }
+    }
+
     return 0;
 }
