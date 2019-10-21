@@ -124,7 +124,7 @@ void Population::initPolyclonal(std::ifstream& startFile,const std::string & gen
     size_ = count;
 }
 
-void Population::divide(int targetBuffer, int targetSize, std::ofstream& LOG, bool use_mut_log,std::ofstream& pev_log, bool& track_pangenomes_evolution,double& lambda_plus, double& lambda_minus, double& r_prime, double& s_prime, int& GENERATION_CTR, int& DT){
+void Population::divide(int targetBuffer, int targetSize, std::ofstream& LOG, bool use_mut_log,std::ofstream& pev_log, bool& track_pangenomes_evolution, double& lambda_plus, double& lambda_minus, double& r_prime, double& s_prime, int& GENERATION_CTR, int& DT){
     // allocate space for temporary population
     Population newPopulation(targetBuffer);
     double relative_fitness(1);
@@ -325,7 +325,12 @@ void Population::simul_pev_before_cell_division(std::ofstream& cells_gene_conten
 					std::uniform_int_distribution<int> uniff_dist(0, cells_.size()-1);
 					int random_index_cell = uniff_dist(g_rng);
 					auto cell_two = cells_.begin() + random_index_cell;
-					cell_two->select_random_gene();
+                                        bool isAnyMobileGene_toGain = false;
+					isAnyMobileGene_toGain = cell_two->select_random_gene_gain();
+                                        if (!isAnyMobileGene_toGain){ //if there are no mobile genes in the genome, do not simulate any gain events
+                                            i = i - 1; // because the random cell selected did not have any mobile genes so the gain event was not simulated 
+                                            continue;
+                                        }
 					int ID_gene_gained = cell.add_gene(a_for_s_x,b_for_s_x);//this command updates automatically Cell gene array and fitness after gain!
 					gain_event_ctr++;
 					//If the user activated the option to get pangenome evolution feedbacks, save feedback for the gain event at each DT generations where DT is the time-step
@@ -388,3 +393,14 @@ double Population::addSumFitness(double w){
     sumFitness_ += w;
     return sumFitness_;
 }
+/*
+std::unordered_set<int> Population::getUniqueSpeciesId() const{ //O(N*log(N)) algorithm to find the unique species ID
+    int nb_species = 0;
+    std::unordered_set<int> unique_species_set = {};
+    for (auto& cell : cells_) {
+        unique_species_set.insert(cell.ID());
+    }
+    return unique_species_set;
+
+}
+*/

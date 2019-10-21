@@ -301,7 +301,7 @@ void openCellsgenecontentLog(std::ofstream& cells_gene_content_log, std::string 
 		exit(1);
 	}else{
 		std::cout << "Opening Cell gene content log ..." << std::endl;
-		cells_gene_content_log <<"Generation_ctr"<<"\t"<<"cell_ID"<<"\t"<<"gene_ID"<<"\t"<<"nucl_sequence"<<std::endl;
+		cells_gene_content_log <<"Generation_ctr"<<"\t"<<"cell_ID"<<"\t"<<"gene_ID"<<"\t"<<"nucl_sequence"<<"\t"<<"cai"<<std::endl;
 	}
 }
 
@@ -948,6 +948,8 @@ void read_Cell(std::ifstream& IN, std::ofstream& OUT, bool DNA)
     int Ns(0);
     int Na(0);
 
+    bool is_mob(false);
+
     for (int j=0; j<gene_size; ++j){
         std::string DNAsequence;
 
@@ -960,6 +962,7 @@ void read_Cell(std::ifstream& IN, std::ofstream& OUT, bool DNA)
 
         IN.read((char*)(&Na),sizeof(int));
         IN.read((char*)(&Ns),sizeof(int));
+        IN.read((char*)(&is_mob),sizeof(bool));
         
         //read DNA sequence
         int nl(0);
@@ -1072,4 +1075,823 @@ void printProgress (double progress)
 
     std::cout << "] " << int(progress * 100.0) << " %\r";
     std::cout.flush();
+}
+
+std::map<std::string, double> get_codon_usage_map(const int the_cell_id, const std::string& the_cell_file_workspace){
+    int nb_codons_input = 0; //initialization : should be equal to 61 at the end!
+    bool b_f_does_exit = false;
+    std::stringstream sstm;
+    std::string line;
+    sstm << the_cell_id << ".cell";
+    sprintf(buffer,"%s/%s",the_cell_file_workspace.c_str(),sstm.str().c_str());
+    std::cout << buffer <<std::endl;
+    if (FILE *file = fopen(buffer, "r")) {
+        b_f_does_exit = true;
+        fclose(file);
+    }
+    //verify if file exists
+    if (b_f_does_exit){
+        // read codon usage data and build map 
+        std::ifstream the_cell_ifs (buffer, std::ifstream::in);
+        std::map<std::string, double> out_codon_map;        
+        out_codon_map = {{"UUU", 0},{"UCU", 0},{"UAU", 0},{"UGU", 0},{"UUC", 0},{"UCC", 0},{"UAC", 0},{"UGC", 0},{"UUA", 0},{"UCA", 0},{"UUG", 0},{"UCG", 0},{"UGG", 0},{"CUU", 0},{"CCU", 0},{"CAU", 0},{"CGU", 0},{"CUC", 0},{"CCC", 0},{"CAC", 0},{"CGC", 0},{"CUA", 0},{"CCA", 0},{"CAA", 0},{"CGA", 0},{"CUG", 0},{"CCG", 0},{"CAG", 0},{"CGG", 0},{"AUU", 0},{"ACU", 0},{"AAU", 0},{"AGU", 0},{"AUC", 0},{"ACC", 0},{"AAC", 0},{"AGC", 0},{"AUA", 0},{"ACA", 0},{"AAA", 0},{"AGA", 0},{"AUG", 0},{"ACG", 0},{"AAG", 0},{"AGG", 0},{"GUU", 0},{"GCU", 0},{"GAU", 0},{"GGU", 0},{"GUC", 0},{"GCC", 0},{"GAC", 0},{"GGC", 0},{"GUA", 0},{"GCA", 0},{"GAA", 0},{"GGA", 0},{"GUG", 0},{"GCG", 0},{"GAG", 0},{"GGG", 0}};
+        
+        while (!the_cell_ifs.eof()) {
+            getline(the_cell_ifs, line);
+            std::string word;
+            std::istringstream iss(line, std::istringstream:: in );
+            iss >> word;
+            if (word == "UUU"){
+                iss >> word;
+                out_codon_map["UUU"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "UCU"){
+                iss >> word;
+                out_codon_map["UCU"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "UAU"){
+                iss >> word;
+                out_codon_map["UAU"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "UGU"){
+                iss >> word;
+                out_codon_map["UGU"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "UUC"){
+                iss >> word;
+                out_codon_map["UUC"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "UCC"){
+                iss >> word;
+                out_codon_map["UCC"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "UAC"){
+                iss >> word;
+                out_codon_map["UAC"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "UGC"){
+                iss >> word;
+                out_codon_map["UGC"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "UUA"){
+                iss >> word;
+                out_codon_map["UUA"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "UCA"){
+                iss >> word;
+                out_codon_map["UCA"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "UUG"){
+                iss >> word;
+                out_codon_map["UUG"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "UCG"){
+                iss >> word;
+                out_codon_map["UCG"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "UGG"){
+                iss >> word;
+                out_codon_map["UGG"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "CUU"){
+                iss >> word;
+                out_codon_map["CUU"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "CCU"){
+                iss >> word;
+                out_codon_map["CCU"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "CAU"){
+                iss >> word;
+                out_codon_map["CAU"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "CGU"){
+                iss >> word;
+                out_codon_map["CGU"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "CUC"){
+                iss >> word;
+                out_codon_map["CUC"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "CCC"){
+                iss >> word;
+                out_codon_map["CCC"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "CAC"){
+                iss >> word;
+                out_codon_map["CAC"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "CGC"){
+                iss >> word;
+                out_codon_map["CGC"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "CUA"){
+                iss >> word;
+                out_codon_map["CUA"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "CCA"){
+                iss >> word;
+                out_codon_map["CCA"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "CAA"){
+                iss >> word;
+                out_codon_map["CAA"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "CGA"){
+                iss >> word;
+                out_codon_map["CGA"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "CUG"){
+                iss >> word;
+                out_codon_map["CUG"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "CCG"){
+                iss >> word;
+                out_codon_map["CCG"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "CAG"){
+                iss >> word;
+                out_codon_map["CAG"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "CGG"){
+                iss >> word;
+                out_codon_map["CGG"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "AUU"){
+                iss >> word;
+                out_codon_map["AUU"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "ACU"){
+                iss >> word;
+                out_codon_map["ACU"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "AAU"){
+                iss >> word;
+                out_codon_map["AAU"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "AGU"){
+                iss >> word;
+                out_codon_map["AGU"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "AUC"){
+                iss >> word;
+                out_codon_map["AUC"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "ACC"){
+                iss >> word;
+                out_codon_map["ACC"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "AAC"){
+                iss >> word;
+                out_codon_map["AAC"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "AGC"){
+                iss >> word;
+                out_codon_map["AGC"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "AUA"){
+                iss >> word;
+                out_codon_map["AUA"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "ACA"){
+                iss >> word;
+                out_codon_map["ACA"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "AAA"){
+                iss >> word;
+                out_codon_map["AAA"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "AGA"){
+                iss >> word;
+                out_codon_map["AGA"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "AUG"){
+                iss >> word;
+                out_codon_map["AUG"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "ACG"){
+                iss >> word;
+                out_codon_map["ACG"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "AAG"){
+                iss >> word;
+                out_codon_map["AAG"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "AGG"){
+                iss >> word;
+                out_codon_map["AGG"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "GUU"){
+                iss >> word;
+                out_codon_map["GUU"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "GCU"){
+                iss >> word;
+                out_codon_map["GCU"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "GAU"){
+                iss >> word;
+                out_codon_map["GAU"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "GGU"){
+                iss >> word;
+                out_codon_map["GGU"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "GUC"){
+                iss >> word;
+                out_codon_map["GUC"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "GCC"){
+                iss >> word;
+                out_codon_map["GCC"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "GAC"){
+                iss >> word;
+                out_codon_map["GAC"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "GGC"){
+                iss >> word;
+                out_codon_map["GGC"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "GUA"){
+                iss >> word;
+                out_codon_map["GUA"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "GCA"){
+                iss >> word;
+                out_codon_map["GCA"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "GAA"){
+                iss >> word;
+                out_codon_map["GAA"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "GGA"){
+                iss >> word;
+                out_codon_map["GGA"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "GUG"){
+                iss >> word;
+                out_codon_map["GUG"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "GCG"){
+                iss >> word;
+                out_codon_map["GCG"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "GAG"){
+                iss >> word;
+                out_codon_map["GAG"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            } else if (word == "GGG"){
+                iss >> word;
+                out_codon_map["GGG"] = atof(word.c_str());
+                nb_codons_input = nb_codons_input +1;
+            }
+        }
+        the_cell_ifs.close();
+
+        //make sure the user gave the 61 required codon usage data
+        if (nb_codons_input!=61){
+            std::cerr << "Error : You need to input codon usage data for all 61 possible sense codons. Please look at the file " << the_cell_id << ".cell!" << std::endl;
+            exit(2);
+        }
+
+        return out_codon_map;
+    }
+    else{
+        // error file does not exist -> throw exception
+        std::string msg_err = "Error! The following .cell file does not exist : "+sstm.str();
+        msg_err += buffer;
+        throw std::runtime_error(msg_err);
+    }
+
+}
+
+
+
+void normalize_CUF(const int& p_species_id, std::map<int, std::map<std::string, double>>& p_map_of_codon_usag_map){
+    //Copy the original codon usage frequencies map; 
+    std::map<std::string, double> old_codon_usage_freq_map = p_map_of_codon_usag_map[p_species_id];
+    //Calculate normalized RSCUs of synonymous codons (Equation 2 Sharp & Li 1987)
+    for (auto it = p_map_of_codon_usag_map[p_species_id].begin();it!=p_map_of_codon_usag_map[p_species_id].end();++it){
+        std::string current_codon = it->first;
+        std::vector<double> vec_cufs_syn_codons_of_current_codon;
+        if (current_codon == "UUU"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UUU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UUC"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["UUU"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "UCU"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGC"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["UCU"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "UAU"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UAU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UAC"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["UAU"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "UGU"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UGU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UGC"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["UGU"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "UUC"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UUC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UUU"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["UUC"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "UCC"){
+                    //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGC"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["UCC"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "UAC"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UAC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UAU"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["UAC"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "UGC"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UGC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UGU"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["UGC"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "UUA"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UUA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UUG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["UUA"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "UCA"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGC"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["UCA"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "UUG"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UUG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UUA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["UUG"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "UCG"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGC"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["UCG"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "UGG"){
+            //UGG has no synonymous codons
+            it->second = 1;
+        } else if (current_codon == "CUU"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UUA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UUG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["CUU"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "CCU"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CCU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CCC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CCA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CCG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["CCU"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "CAU"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CAU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CAC"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["CAU"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "CGU"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["CGU"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "CUC"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UUA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UUG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["CUC"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "CCC"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CCC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CCU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CCA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CCG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["CCC"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "CAC"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CAC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CAU"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["CAC"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "CGC"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["CGC"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "CUA"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UUA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UUG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUG"]); 
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["CUA"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "CCA"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CCA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CCU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CCC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CCG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["CCA"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "CAA"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CAA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CAG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["CAA"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "CGA"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["CGA"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "CUG"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UUA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UUG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CUA"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["CUG"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "CCG"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CCG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CCU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CCC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CCA"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["CCG"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "CAG"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CAG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CAA"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["CAG"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "CGG"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["CGG"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "AUU"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AUU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AUC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AUA"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["AUU"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "ACU"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["ACU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["ACC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["ACA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["ACG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["ACU"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "AAU"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AAU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AAC"]);
+            it->second = (old_codon_usage_freq_map["AAU"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "AGU"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGC"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["AGU"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "AUC"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AUC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AUU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AUA"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["AUC"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "ACC"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["ACC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["ACU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["ACA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["ACG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["ACC"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "AAC"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AAC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AAU"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["AAC"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "AGC"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["UCG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGU"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["AGC"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "AUA"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AUA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AUU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AUC"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["AUA"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "ACA"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["ACA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["ACU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["ACC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["ACG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["ACA"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "AAA"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AAA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AAG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["AAA"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "AGA"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["AGA"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "AUG"){
+           //AUG has no synonymous codons
+           it->second = 1;
+        } else if (current_codon == "ACG"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["ACG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["ACU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["ACC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["ACA"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["ACG"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "AAG"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AAG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AAA"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["AAG"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "AGG"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["AGA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["CGG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["AGG"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "GUU"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GUU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GUC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GUA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GUG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["GUU"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "GCU"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GCU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GCC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GCA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GCG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["GCU"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "GAU"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GAU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GAC"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["GAU"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "GGU"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GGU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GGC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GGA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GGG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["GGU"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "GUC"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GUC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GUU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GUA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GUG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["GUC"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "GCC"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GCC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GCU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GCA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GCG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["GCC"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "GAC"){
+             //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GAC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GAU"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["GAC"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "GGC"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GGC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GGU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GGA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GGG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["GGC"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "GUA"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GUA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GUU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GUC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GUG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["GUA"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "GCA"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GCA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GCU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GCC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GCG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["GCA"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "GAA"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GAA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GAG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["GAA"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "GGA"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GGA"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GGU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GGC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GGG"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["GGA"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "GUG"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GUG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GUU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GUC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GUA"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["GUG"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "GCG"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GCG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GCU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GCC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GCA"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["GCG"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "GAG"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GAG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GAA"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["GAG"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        } else if (current_codon == "GGG"){
+            //add all the CUFs of the synonymous codons of the current codon to vec_cufs_syn_codons_of_current_codon
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GGG"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GGU"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GGC"]);
+            vec_cufs_syn_codons_of_current_codon.push_back(old_codon_usage_freq_map["GGA"]);
+            //NORMALIZE CUF
+            it->second = (old_codon_usage_freq_map["GGG"])/(*max_element(vec_cufs_syn_codons_of_current_codon.begin(),vec_cufs_syn_codons_of_current_codon.end()));
+        }
+    }
+    
+    std::cout << "#########Original map########" << std::endl;//to remove after test
+    for(auto const &elem : old_codon_usage_freq_map){//to remove after test
+        std::cout << elem.first << " " << elem.second << ";";//to remove after test
+    }//to remove after test
+    std::cout << std::endl;//to remove after test
+    std::cout << "#########New map########" << std::endl;//to remove after test
+    for(auto const &elem : p_map_of_codon_usag_map[p_species_id]){//to remove after test
+        std::cout << elem.first << " " << elem.second << ";";//to remove after test
+    }//to remove after test
+    std::cout << std::endl;//to remove after test
+}     
+
+//returns a vector of species ID based on the .cell files
+std::vector<int> get_unique_species(const char* the_cell_files_workspace_path){
+    std::vector<int> vec_out_species_id;
+    std::vector<std::string> v_files_in_wp;
+    DIR *ptr_dir;
+    struct dirent *the_dirp;
+    if((ptr_dir  = opendir(the_cell_files_workspace_path)) == NULL) {
+        std::cout << "Directory " << the_cell_files_workspace_path << " does not exist!" << std::endl;
+    }
+
+    while ((the_dirp = readdir(ptr_dir)) != NULL) {
+        v_files_in_wp.push_back(std::string(the_dirp->d_name));
+    }
+
+    closedir(ptr_dir);
+    
+    for (auto const &a_file : v_files_in_wp){
+        std::stringstream the_str_ss;
+        std::string str;
+        str = a_file;
+        std::string::size_type i = str.find(".cell");
+        if (i != std::string::npos){
+            int x;
+            str.erase(i, 5); //erase .cell 
+            the_str_ss << str;
+            the_str_ss >> x;
+            vec_out_species_id.push_back(x);
+        }//
+    }   
+    return vec_out_species_id;
 }

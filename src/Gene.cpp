@@ -3,6 +3,8 @@
 std::gamma_distribution<> Gene::gamma_ = std::gamma_distribution<>(1.0, 1.0);
 std::normal_distribution<> Gene::normal_ = std::normal_distribution<>(1.0, 1.0);
 std::exponential_distribution<> Gene::exponential_ = std::exponential_distribution<>(1.0);
+bool Gene::simulCub_ = false; //by default 
+double Gene::stddev_cub_dfe_ = 0; //by default
 
 //Input: gene file
 Gene::Gene(std::ifstream& gene_in, Cell *parent)
@@ -59,11 +61,19 @@ Gene::Gene(std::ifstream& gene_in, Cell *parent)
             iss>>word; 
             eff_ = atof(word.c_str());
         }
+        else if (word == "mobile"|| word == "Mobile"|| word == "MOBILE"){
+            isMobile_ = true;
+        }
         else if (word == "//")
             {;}//do nothing
     }
     Na_ = 0; //default
     Ns_ = 0;
+    if (simulCub_){
+        this->update_cai();
+    } else{
+        cai_ = (0.0/0.0);
+    }
     this->s_current_mutation = 0;
 }
 
@@ -78,10 +88,13 @@ Gene::Gene(const Gene& G)
     f_ = G.f_;
     conc_ = G.conc_;
     e_ = G.e_;
+    isMobile_=G.isMobile_;
+    cai_ = G.cai_;
     eff_ = G.eff_;
     Na_ = G.Na_;
     Ns_ = G.Ns_;
     this->s_current_mutation = G.s_current_mutation;
+    myCell_ = G.myCell_;
 }
 
 Gene::Gene()
@@ -94,10 +107,13 @@ Gene::Gene()
     f_ = 1;
     conc_ = 0;
     e_ = 0;
+    isMobile_=false;
+    cai_ = (0.0/0.0);
     eff_ = 0;
     Na_ = 0;
     Ns_ = 0;
     this->s_current_mutation = 0;
+    myCell_ = 0;
 }
 
 Gene::~Gene()
@@ -125,11 +141,14 @@ Gene& Gene::operator=(const Gene& A)
         this->f_ = A.f_;
         this->conc_ = A.conc_;
         this->e_ = A.e_;
+        this->isMobile_=A.isMobile_;
+        this->cai_ = A.cai_;
         this->eff_ = A.eff_;
         this->Na_ = A.Na_;
         this->Ns_ = A.Ns_;
         (this->gene_seq_).assign(A.gene_seq_);
         this->s_current_mutation = A.s_current_mutation;
+        this->myCell_ = A.myCell_;
     }
     return *this;
 }
@@ -259,6 +278,10 @@ This version of the mutation function draws the selection coefficient value from
 */
 double Gene::Mutate_Select_Dist(int i, int j)
 { 
+        float old_cai = 0; //initialize old_cai
+        if (simulCub_){
+            old_cai = this->cai(); //old cai (before mutation)
+        }
 	if(i>=gene_len_){
 		std::cerr << "ERROR: Mutation site out of bounds. Gene "<<this->num()<<" length is : "<<this->geneLength()<<" but selected site is "<<i<< std::endl;
 		exit(2);
@@ -285,16 +308,35 @@ double Gene::Mutate_Select_Dist(int i, int j)
 
 	if(the_gene_new_aa!=the_gene_old_aa){ //Non-synonymous
 		if (randomNumber()<0.7){
-			s = RandomNormal(); //little fitness effect (around neutral) represents 70% of the mutation fitness distribution
+			s = RandomNormal(); //little fitness effect (around neutral) represents 70% of the nonsynonymous mutations DFE distribution
 			Na_ += 1;
 		}else{
-			s = -1; //lethal mutations represents the rest of the mutation fitness distribution
+			s = -1; //lethal mutations represents the rest of the nonsynonymous mutations DFE
 			Na_ += 1;
 		}
 
 	}else{ //Synonymous
-		s = 0;
-		Ns_ += 1;
+                if (simulCub_){
+        		this->update_cai(); 
+        		double new_cai = this->cai();
+                        std::normal_distribution<double> random_s_cai(0.0,stddev_cub_dfe_);
+                        double s = random_s_cai(g_rng);
+                        if (new_cai >= old_cai){
+                            while (s < 0){//we want a positive fitness effect because of cai increase
+                                s = random_s_cai(g_rng);
+                            }
+                        }else{
+                            while (s >= 0){//we want a negative fitness effect because of cai decrease
+                                s = random_s_cai(g_rng);
+                            }
+                        }
+        		Ns_ += 1;
+        
+    		}else{//all synonymous mutations are neutral
+        		s = 0;
+		        Ns_ += 1;
+    		}
+
 	}
 	double wf = 1 + s;
 	this->setS_current_mutation(s);
@@ -451,6 +493,8 @@ Gene::Gene(const Gene& G, Cell *p_new_Cell) {
     f_ = G.f_;
     conc_ = G.conc_;
     e_ = G.e_;
+    isMobile_=G.isMobile_;
+    cai_ = G.cai_;
     eff_ = G.eff_;
     Na_ = G.Na_;
     Ns_ = G.Ns_;
@@ -526,4 +570,22 @@ std::string Gene::getAAresidueFromCodonSequence(const std::string& original_codo
 		return "STOP";
 	}
 
+}
+
+void Gene::update_cai(){
+    int nb_codons = gene_seq_.length()/3;
+    std::string the_gene_seq_rna = gene_seq_;
+    std::replace(the_gene_seq_rna.begin(), the_gene_seq_rna.end(), 'T', 'U'); //convert dna triplets in rna codon sequence (T -> U)
+    double sum_ln_w = 0; //initialize the sum of ln(w); Equation 7 Sharp and Li (1987)
+    for (int i = 0; i != the_gene_seq_rna.length(); i=i+3){
+        // fetch current codon
+        std::string cdn_curr = the_gene_seq_rna.substr(i, 3);
+        if (!isnan(myCell_->get_relative_cuf(cdn_curr))){
+            sum_ln_w = sum_ln_w + log(myCell_->get_relative_cuf(cdn_curr));
+        }else{
+            std::cerr << "Error : Please input codon usage frequency for codon" << cdn_curr << " in the file " << myCell_->ID() << ".cell" << std::endl;
+            exit(2);
+        }
+    }
+    this->cai_ = exp((1.0/nb_codons)*sum_ln_w);
 }

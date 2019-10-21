@@ -22,6 +22,10 @@
 #include <iterator>
 #include <sys/stat.h>
 #include <stdexcept>
+#include <map>
+#include <unordered_set>
+#include <dirent.h>
+#include <sys/types.h>
 
 #include <errno.h>    // errno, ENOENT, EEXIST
 #if defined(_WIN32)
@@ -187,4 +191,7 @@ void qread_Cell(std::ifstream&, std::ofstream&);
 void seqread_Cell(std::ifstream&, std::ofstream&);
 void read_Parent(std::ifstream&, std::ofstream&);
 void read_Cell(std::ifstream&, std::ofstream&, bool);
+std::map<std::string, double> get_codon_usage_map(const int the_cell_id, const std::string& the_cell_filepath); 
+void normalize_CUF(const int& p_species_id, std::map<int, std::map<std::string, double>>& p_map_of_codon_usag_map);
+std::vector<int> get_unique_species(const char* the_cell_files_workspace_path);
 #endif

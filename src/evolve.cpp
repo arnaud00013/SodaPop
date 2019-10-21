@@ -55,6 +55,8 @@ int main(int argc, char *argv[])
     bool track_pangenomes_evolution = false;
     bool execute_variant_analysis = false;
     /*## HGT ##*/
+    
+    bool simul_codon_usage_bias_effect = false;    
 
     std::string geneListFile;
     std::string genesPath;
@@ -109,7 +111,7 @@ int main(int argc, char *argv[])
         TCLAP::ValueArg<double> r_prime_Arg("","rPrime","parameter rPrime to calculate beta(x)",false,1,"double");
 
         //parameter s_prime to calculate r(x)
-		TCLAP::ValueArg<double> s_prime_Arg("","sPrime","parameter sPrime to calculate alpha(x))",false,1,"double");
+        TCLAP::ValueArg<double> s_prime_Arg("","sPrime","parameter sPrime to calculate alpha(x))",false,1,"double");
 
         //parameter lambda_plus to calculate alpha(x)
         TCLAP::ValueArg<double> lambda_plus_Arg("","lambdaPlus","parameter lambdaPlus to calculate alpha(x)",false,1,"double");
@@ -123,6 +125,12 @@ int main(int argc, char *argv[])
         //number of cpus for variant analysis (if applicable)
         TCLAP::ValueArg<int> nbCpuVA_Arg("u","nbCpu-VA","Number of cpus used for variant analysis",false,1,"int");
         /*## HGT ##*/
+
+        /*## SodaPop argument that records if the user want to simulate the fitness effect of codon usage bias ##*/
+        TCLAP::SwitchArg simul_codon_usage_bias_Arg("","simulCUB","Simulate the fitness effect of codon usage bias", cmd, false);
+
+        //Standard deviation of the codon usage bias Distribution of Fitness Effect (dfe)
+        TCLAP::ValueArg<double> standard_dev_cub_dfe_Arg("","stdCubDfe","Standard deviation of the codon usage bias Distribution of Fitness Effect (dfe)",false,0,"double");
 
         // Add the arguments to the CmdLine object.
         cmd.add(maxArg);
@@ -138,6 +146,7 @@ int main(int argc, char *argv[])
         cmd.add(alphaArg);
         cmd.add(betaArg);
         cmd.add(inputArg);
+        cmd.add(standard_dev_cub_dfe_Arg);
 
         /*## HGT ##*/
         cmd.add(a_Arg);
@@ -209,6 +218,20 @@ int main(int argc, char *argv[])
             }
             /*## HGT ##*/
         }
+        if (simul_codon_usage_bias_Arg.isSet()){
+            simul_codon_usage_bias_effect = simul_codon_usage_bias_Arg.getValue();
+            if (simul_codon_usage_bias_effect){
+                if (!standard_dev_cub_dfe_Arg.isSet()){
+                    std::cerr << "Error! You chosed to simulate Codon Usage Bias fitness effect but you didn't input any value for the standard deviation of the fitness effect distribution." << std::endl;
+                    exit(2);
+                }else{ 
+                    Gene::stddev_cub_dfe_ = standard_dev_cub_dfe_Arg.getValue();
+                    
+                }
+                
+            }
+        }
+
 
         outputEncoding = intToEncoding_Type(seqArg.getValue());
         createPop = intToPop_Type(initArg.getValue());
@@ -267,6 +290,21 @@ int main(int argc, char *argv[])
         readSnapshotHeader(startFile);
     }catch (std::runtime_error &e) {}
 
+    if (simul_codon_usage_bias_effect){ //if codon usage bias fitness effects are simulated create class Cell map of codon usage maps
+        //get the vector of unique species ID
+        std::vector<int> vec_unique_species_id;
+        char path[] = "files/start";
+        vec_unique_species_id = get_unique_species(path);
+        std::cout << "-> Loading species codon usage files ..." <<std::endl;
+        //Create std::map<int, std::map<std::string, double>> Cell::map_codon_usage_maps_
+        for (auto const &current_sp_id : vec_unique_species_id){
+            Cell::map_codon_usage_maps_[current_sp_id]=get_codon_usage_map(current_sp_id, "files/start");
+            normalize_CUF(current_sp_id, Cell::map_codon_usage_maps_);
+        }
+        std::cout << "-> All species codon usage files were opened successfully ..." <<std::endl;
+    }
+
+
     //std::vector <Cell> Cell_arr;
     Population currentPop(startFile, genesPath, targetPopSize, createPop);
 
@@ -289,6 +327,8 @@ int main(int argc, char *argv[])
 
     std::cout << "Starting evolution ..." << std::endl;
     CMDLOG << "Starting evolution ..." << std::endl;
+    
+    Gene::simulCub_ = simul_codon_usage_bias_effect; //send to the class Gene the boolean telling if codon usage bias fitness effects are simulated
 
     // // PSEUDO WRIGHT-FISHER PROCESS
     while (currentGen < maxGen){
