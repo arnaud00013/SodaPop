@@ -1586,7 +1586,7 @@ get_synonymity_stats <- function(the_df_cell_content_log, the_gene_ID,generation
   Nb_nsyn_sites <- (gene_length - Nb_syn_sites)
   #get a1 and the number of copy of a certain gene during a certain generation
   nb_copy_gene_in_current_gen=nrow(df_the_gene_in_cells_at_generation_of_interest)
-  nb_uniq_species_of_gene_in_current_gen=len(uniq(df_the_gene_in_cells_at_generation_of_interest$cell_ID))
+  nb_uniq_species_of_gene_in_current_gen=length(uniq(df_the_gene_in_cells_at_generation_of_interest$cell_ID))
   if (nb_copy_gene_in_current_gen == 0){
     a1_g <- NA
   }else{
