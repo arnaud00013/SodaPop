@@ -412,7 +412,7 @@ get_synonymity_stats <- function(the_df_cell_content_log, the_gene_ID,generation
   df_the_gene_in_cells_at_generation_of_interest <- subset(x = the_df_cell_content_log,subset = (gene_ID==the_gene_ID)&(Generation_ctr==generation_of_interest))
   #handle the case when there are no copy of the gene in the current generation
   if (nrow(df_the_gene_in_cells_at_generation_of_interest)==0){
-    return(list(nb_nsm=NA,nb_sm=NA,nb_nss=NA,nb_ss=NA,nb_segregative_sites=NA,nb_copy_g_in_G=0,a1=NA,Ne_k_hat_gene_in_current_g=NA,Ne_S_Taj_gene_in_current_g=NA,D_Taj_gene_in_current_g=NA))
+    return(list(nb_nsm=NA,nb_sm=NA,nb_nss=NA,nb_ss=NA,nb_segregative_sites=NA,nb_copy_g_in_G=0,nb_uniq_species_of_g_in_G=0,a1=NA,Ne_k_hat_gene_in_current_g=NA,Ne_S_Taj_gene_in_current_g=NA,D_Taj_gene_in_current_g=NA))
   }
   gene_seq <- read.csv(file = paste0(sodapop_workspace,"files/genes/",the_gene_ID,".gene"),header = FALSE,sep = "\t",stringsAsFactors = FALSE)$V3[4]
   gene_length <- nchar(gene_seq) 
@@ -1586,6 +1586,7 @@ get_synonymity_stats <- function(the_df_cell_content_log, the_gene_ID,generation
   Nb_nsyn_sites <- (gene_length - Nb_syn_sites)
   #get a1 and the number of copy of a certain gene during a certain generation
   nb_copy_gene_in_current_gen=nrow(df_the_gene_in_cells_at_generation_of_interest)
+  nb_uniq_species_of_gene_in_current_gen=len(uniq(df_the_gene_in_cells_at_generation_of_interest$cell_ID))
   if (nb_copy_gene_in_current_gen == 0){
     a1_g <- NA
   }else{
@@ -1610,7 +1611,7 @@ get_synonymity_stats <- function(the_df_cell_content_log, the_gene_ID,generation
   D_Taj_g_during_g <- ((Ne_k_hat_g_during_g - Ne_S_Taj_g_during_g)*(2*mu))/sqrt_expected_variance_current_gene_during_g
   
   #return values of interest
-  return(list(nb_nsm=Nb_nsyn_mutations,nb_sm=Nb_syn_mutations,nb_nss=Nb_nsyn_sites,nb_ss=Nb_syn_sites,nb_segregative_sites=nb_segreg_sites,nb_copy_g_in_G=nb_copy_gene_in_current_gen,a1=a1_g,Ne_k_hat_gene_in_current_g=Ne_k_hat_g_during_g,Ne_S_Taj_gene_in_current_g=Ne_S_Taj_g_during_g,D_Taj_gene_in_current_g=D_Taj_g_during_g))
+  return(list(nb_nsm=Nb_nsyn_mutations,nb_sm=Nb_syn_mutations,nb_nss=Nb_nsyn_sites,nb_ss=Nb_syn_sites,nb_segregative_sites=nb_segreg_sites,nb_copy_g_in_G=nb_copy_gene_in_current_gen,nb_uniq_species_of_g_in_G=nb_uniq_species_of_gene_in_current_gen,a1=a1_g,Ne_k_hat_gene_in_current_g=Ne_k_hat_g_during_g,Ne_S_Taj_gene_in_current_g=Ne_S_Taj_g_during_g,D_Taj_gene_in_current_g=D_Taj_g_during_g))
 }
 
 
@@ -1845,7 +1846,7 @@ if (as.integer(num_fitness_landscape) != 7){
   df_cell_gene_content_current_sim <- read.csv(file = paste0(sim_output_workpace,simulation_name,"/CELL_GENE_CONTENT_LOG.txt"),header = TRUE,sep = "\t",stringsAsFactors = FALSE)
   v_generations <- c(1,seq(from=dt,to = simulation_time,by=dt))
   v_unique_gene_IDs_current_sim <- sort(unique(df_cell_gene_content_current_sim$gene_ID))
-  df_results_variants_analysis_current_sim <- data.frame(gene_ID=rep(v_unique_gene_IDs_current_sim,length(v_generations)),Generation_ctr=rep(x = v_generations,each=length(v_unique_gene_IDs_current_sim)),nb_nss=0,nb_ss=0,nb_nsm=0,nb_sm=0,dn=NA,ds=NA,dnds=NA,nb_seg_sites=0,nb_copy_gene=0,a1=NA,Ne_S_Taj=0,Ne_k_hat=0,D_Taj=NA,stringsAsFactors = FALSE)
+  df_results_variants_analysis_current_sim <- data.frame(gene_ID=rep(v_unique_gene_IDs_current_sim,length(v_generations)),Generation_ctr=rep(x = v_generations,each=length(v_unique_gene_IDs_current_sim)),nb_nss=0,nb_ss=0,nb_nsm=0,nb_sm=0,dn=NA,ds=NA,dnds=NA,nb_seg_sites=0,nb_copy_gene=0,nb_uniq_species_of_gene=0,a1=NA,Ne_S_Taj=0,Ne_k_hat=0,D_Taj=NA,stringsAsFactors = FALSE)
   #Only calculate variant analysis results for few time points
   df_results_variants_analysis_current_sim <- subset(x = df_results_variants_analysis_current_sim,subset = Generation_ctr %in% c(1,seq(from=(dt),to = simulation_time,by=(dt))))
   #number of cpus for variant analysis. Let at least 1 cpus free
@@ -1863,7 +1864,7 @@ if (as.integer(num_fitness_landscape) != 7){
     for (p_row_ind in p_row_ind_begin:p_row_ind_end){
       synonymity_infos <- get_synonymity_stats(the_df_cell_content_log = df_cell_gene_content_current_sim,the_gene_ID = df_results_variants_analysis_current_sim$gene_ID[p_row_ind],generation_of_interest = df_results_variants_analysis_current_sim$Generation_ctr[p_row_ind])
       nb_copy_and_a1_infos <- list(nb_copy_g_in_G=synonymity_infos$nb_copy_g_in_G,a1=synonymity_infos$a1)
-      
+      nb_uniq_species_of_current_g_in_current_g = synonymity_infos$nb_uniq_species_of_g_in_G
       #extract all the infos/variables from the two previous lists AND ASSIGN VARIABLES VALUES FOR THE ROW at p_row_ind  
       nb_nsm_current_g_during_g <- synonymity_infos$nb_nsm
       df_results_variants_analysis_current_sim$nb_nsm[p_row_ind] <- nb_nsm_current_g_during_g
@@ -1888,6 +1889,7 @@ if (as.integer(num_fitness_landscape) != 7){
       df_results_variants_analysis_current_sim$nb_copy_gene[p_row_ind] <- nb_copy_current_g_during_g
       a1_current_g_during_g <- nb_copy_and_a1_infos$a1
       df_results_variants_analysis_current_sim$a1[p_row_ind] <- a1_current_g_during_g
+      df_results_variants_analysis_current_sim$nb_uniq_species_of_gene[p_row_ind] <- nb_uniq_species_of_current_g_in_current_g
       Ne_S_Taj_current_g_during_g <-synonymity_infos$Ne_S_Taj_gene_in_current_g
       df_results_variants_analysis_current_sim$Ne_S_Taj[p_row_ind] <- Ne_S_Taj_current_g_during_g
       df_results_variants_analysis_current_sim$Ne_k_hat[p_row_ind] <- synonymity_infos$Ne_k_hat_gene_in_current_g
@@ -1944,21 +1946,21 @@ if (as.integer(num_fitness_landscape) != 7){
   }
   ##########
   #initialization
-  Slope_lm_Ne_k_hat_vs_HGT_strength <- rep(NA,length(v_unique_gene_IDs_current_sim))
-  Slope_lm_Ne_S_Taj_vs_HGT_strength <- rep(NA,length(v_unique_gene_IDs_current_sim))
-  Slope_lm_D_Taj_vs_HGT_strength <- rep(NA,length(v_unique_gene_IDs_current_sim))
-  pvalue_lm_Ne_k_hat_vs_HGT_strength <- rep(NA,length(v_unique_gene_IDs_current_sim))
-  pvalue_lm_Ne_S_Taj_vs_HGT_strength <- rep(NA,length(v_unique_gene_IDs_current_sim))
-  pvalue_lm_D_Taj_vs_HGT_strength <- rep(NA,length(v_unique_gene_IDs_current_sim))
-  adj_r_square_lm_Ne_k_hat_vs_HGT_strength <- rep(NA,length(v_unique_gene_IDs_current_sim))
-  adj_r_square_lm_Ne_S_Taj_vs_HGT_strength <- rep(NA,length(v_unique_gene_IDs_current_sim))
-  adj_r_square_lm_D_Taj_vs_HGT_strength <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  Slope_lm_Ne_k_hat_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  Slope_lm_Ne_S_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  Slope_lm_D_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  pvalue_lm_Ne_k_hat_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  pvalue_lm_Ne_S_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  pvalue_lm_D_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  adj_r_square_lm_Ne_k_hat_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  adj_r_square_lm_Ne_S_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  adj_r_square_lm_D_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
   p_val_threshold <- 0.05/length(v_unique_gene_IDs_current_sim)
   #####DON't FORGET that variable "save_plots_workspace_current_sim" does not have "/" at the end
   for (v_g_ind in 1:length(v_unique_gene_IDs_current_sim)){
-    list_results_current_lm_Ne_k_hat_vs_HGT_strength <- list(adj_r_sq_current_lm = NA,slope_current_lm = NA,p_val_current_lm=NA)
-    list_results_current_lm_Ne_S_Taj_vs_HGT_strength <- list(adj_r_sq_current_lm = NA,slope_current_lm = NA,p_val_current_lm=NA)
-    list_results_current_lm_D_Taj_vs_HGT_strength <- list(adj_r_sq_current_lm = NA,slope_current_lm = NA,p_val_current_lm=NA)
+    list_results_current_lm_Ne_k_hat_vs_Gene_Mobility <- list(adj_r_sq_current_lm = NA,slope_current_lm = NA,p_val_current_lm=NA)
+    list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility <- list(adj_r_sq_current_lm = NA,slope_current_lm = NA,p_val_current_lm=NA)
+    list_results_current_lm_D_Taj_vs_Gene_Mobility <- list(adj_r_sq_current_lm = NA,slope_current_lm = NA,p_val_current_lm=NA)
     
     save_plots_workspace_current_gene <- paste0(save_plots_workspace_current_sim,"/gene_",v_unique_gene_IDs_current_sim[v_g_ind])
     system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("rm -rf ",save_plots_workspace_current_gene,"/"),intern = FALSE,wait = TRUE)
@@ -2026,13 +2028,13 @@ if (as.integer(num_fitness_landscape) != 7){
       
     }
     
-    #Ne_S_Taj vs HGT_strength (STANDARDIZED)
+    #Ne_S_Taj vs Gene_Mobility (STANDARDIZED)
     current_y <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$Ne_S_Taj)
-    current_x <-scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_copy_gene)
+    current_x <-scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_uniq_species_of_gene)
     v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
 
-    if (length(intersect(which(is.finite(df_current_gene_in_time$Ne_S_Taj)),which(is.finite(df_current_gene_in_time$nb_copy_gene))))>=2){
-      tryCatch(expr ={list_results_current_lm_Ne_S_Taj_vs_HGT_strength=ggplotRegression(fit=lmp(Ne_S_Taj ~ nb_copy_gene, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Ne_S_Taj_vs_HGT_strength_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized HGT_strength",ylabl = "standardized Ne_S_Taj")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+    if (length(intersect(which(is.finite(df_current_gene_in_time$Ne_S_Taj)),which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene))))>=2){
+      tryCatch(expr ={list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility=ggplotRegression(fit=lmp(Ne_S_Taj ~ nb_uniq_species_of_gene, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Ne_S_Taj_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized Gene_Mobility",ylabl = "standardized Ne_S_Taj")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
     }
     if (length(na.omit(df_current_gene_in_time$Ne_k_hat))>=1){
       
@@ -2050,13 +2052,13 @@ if (as.integer(num_fitness_landscape) != 7){
       
     }
       
-      #Ne_k_hat vs HGT_strength (STANDARDIZED)
+      #Ne_k_hat vs Gene_Mobility (STANDARDIZED)
       current_y <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$Ne_k_hat)
-      current_x <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_copy_gene)
+      current_x <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_uniq_species_of_gene)
       v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
 
-    if (length(intersect(which(is.finite(df_current_gene_in_time$Ne_k_hat)),which(is.finite(df_current_gene_in_time$nb_copy_gene))))>=2){
-      tryCatch(expr ={list_results_current_lm_Ne_k_hat_vs_HGT_strength=ggplotRegression(fit=lmp(Ne_k_hat ~ nb_copy_gene, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Ne_k_hat_vs_HGT_strength_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized HGT_strength",ylabl = "standardized Ne_k_hat")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+    if (length(intersect(which(is.finite(df_current_gene_in_time$Ne_k_hat)),which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene))))>=2){
+      tryCatch(expr ={list_results_current_lm_Ne_k_hat_vs_Gene_Mobility=ggplotRegression(fit=lmp(Ne_k_hat ~ nb_uniq_species_of_gene, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Ne_k_hat_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized Gene_Mobility",ylabl = "standardized Ne_k_hat")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
     }
     
     
@@ -2067,27 +2069,27 @@ if (as.integer(num_fitness_landscape) != 7){
       axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
       dev.off()
       if (length(na.omit(df_current_gene_in_time$dnds))>=1){
-        #Time series of dn/ds, Tajima's D and HGT_strength (Number of copy of the gene)
-        png(filename = paste0(save_plots_workspace_current_gene,"/dnds_Tajima_D_and_HGT_strength_combined_time_series_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
+        #Time series of dn/ds, Tajima's D and Gene_Mobility (Number of unique species containing the gene)
+        png(filename = paste0(save_plots_workspace_current_gene,"/dnds_Tajima_D_and_Gene_Mobility_combined_time_series_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
         par(mfrow=c(3,1))
         plot(df_current_gene_in_time$dnds~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene dN/dS",col="blue",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$dnds,na.rm = TRUE),max(df_current_gene_in_time$dnds,na.rm=TRUE)))
         axis(side=1, c(1,seq(from=(dt*25),to = simulation_time,by=(dt*25))),las=2)
         plot(df_current_gene_in_time$D_Taj~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene Tajima's D",col="red",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$D_Taj,na.rm = TRUE),max(df_current_gene_in_time$D_Taj,na.rm=TRUE)))
         axis(side=1, at=c(1,seq(from=(dt*25),to = simulation_time,by=(dt*25))),las=2)
-        plot(df_current_gene_in_time$nb_copy_gene~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene HGT strength",col="green",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$nb_copy_gene,na.rm = TRUE),max(df_current_gene_in_time$nb_copy_gene,na.rm=TRUE)))
+        plot(df_current_gene_in_time$nb_uniq_species_of_gene~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene Mobility",col="green",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$nb_uniq_species_of_gene,na.rm = TRUE),max(df_current_gene_in_time$nb_uniq_species_of_gene,na.rm=TRUE)))
         axis(side=1, at=c(1,seq(from=(dt*25),to = simulation_time,by=(dt*25))),las=2)
         dev.off()
         
         par(mfrow=c(1,1))
-        if (length(intersect(which(is.finite(df_current_gene_in_time$D_Taj)),which(is.finite(df_current_gene_in_time$nb_copy_gene))))>=2){
-          ##D_Taj in function of HGT_Strength (STANDARDIZED) plot 
-          # png(filename = paste0(save_plots_workspace_current_gene,"/Tajima_D_VS_log10_HGT_strength_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
-          # plot(df_current_gene_in_time$D_Taj~log10(df_current_gene_in_time$nb_copy_gene+(1E-16)), type="p", pch=19,xlab="log10(HGT_strength)",ylab="Tajima_D",col="red",xlim=c(min(log10(df_current_gene_in_time$nb_copy_gene+(1E-16)),na.rm = TRUE),max(log10(df_current_gene_in_time$nb_copy_gene+(1E-16)),na.rm=TRUE)),ylim=c(min(df_current_gene_in_time$D_Taj,na.rm = TRUE),max(df_current_gene_in_time$D_Taj,na.rm=TRUE)))
+        if (length(intersect(which(is.finite(df_current_gene_in_time$D_Taj)),which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene))))>=2){
+          ##D_Taj in function of Gene_Mobility (STANDARDIZED) plot 
+          # png(filename = paste0(save_plots_workspace_current_gene,"/Tajima_D_VS_log10_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
+          # plot(df_current_gene_in_time$D_Taj~log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1E-16)), type="p", pch=19,xlab="log10(Gene_Mobility)",ylab="Tajima_D",col="red",xlim=c(min(log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1E-16)),na.rm = TRUE),max(log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1E-16)),na.rm=TRUE)),ylim=c(min(df_current_gene_in_time$D_Taj,na.rm = TRUE),max(df_current_gene_in_time$D_Taj,na.rm=TRUE)))
           # dev.off()
           current_y <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$D_Taj)
-          current_x <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_copy_gene)
+          current_x <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_uniq_species_of_gene)
           v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
-          tryCatch(expr ={list_results_current_lm_D_Taj_vs_HGT_strength=ggplotRegression(fit=lmp(D_Taj~nb_copy_gene , data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Tajima_D_VS_HGT_strength_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized HGT_strength",ylabl = "standardized Tajima_D")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+          tryCatch(expr ={list_results_current_lm_D_Taj_vs_Gene_Mobility=ggplotRegression(fit=lmp(D_Taj~nb_uniq_species_of_gene , data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Tajima_D_VS_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized Gene_Mobility",ylabl = "standardized Tajima_D")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         }
       
         if (length(intersect(which(is.finite(df_current_gene_in_time$D_Taj)),which(is.finite(df_current_gene_in_time$dnds))))>=2){
@@ -2101,46 +2103,46 @@ if (as.integer(num_fitness_landscape) != 7){
           v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
           tryCatch(expr = ggplotRegression(fit=lmp(D_Taj~dnds, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Tajima_D_VS_dnds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized dN/dS",ylabl = "standardized Tajima_D"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         }
-        if (length(intersect(which(is.finite(df_current_gene_in_time$nb_copy_gene)),which(is.finite(df_current_gene_in_time$dnds))))>=2){
-          ##HGT_Strength in function of dN/dS plot (STANDARDIZED)
-          # png(filename = paste0(save_plots_workspace_current_gene,"/HGT_strength_VS_dnds_Original_values_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
-          # plot(df_current_gene_in_time$nb_copy_gene~df_current_gene_in_time$dnds, type="p", pch=19,xlab="dN/dS",ylab="HGT_strength",col="red",ylim=c(min(df_current_gene_in_time$nb_copy_gene,na.rm = TRUE),max(df_current_gene_in_time$nb_copy_gene,na.rm=TRUE)))
+        if (length(intersect(which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene)),which(is.finite(df_current_gene_in_time$dnds))))>=2){
+          ##Gene_Mobility in function of dN/dS plot (STANDARDIZED)
+          # png(filename = paste0(save_plots_workspace_current_gene,"/Gene_Mobility_VS_dnds_Original_values_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
+          # plot(df_current_gene_in_time$nb_uniq_species_of_gene~df_current_gene_in_time$dnds, type="p", pch=19,xlab="dN/dS",ylab="Gene_Mobility",col="red",ylim=c(min(df_current_gene_in_time$nb_uniq_species_of_gene,na.rm = TRUE),max(df_current_gene_in_time$nb_uniq_species_of_gene,na.rm=TRUE)))
           # dev.off()
-          current_y <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_copy_gene)
+          current_y <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_uniq_species_of_gene)
           current_x <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$dnds)
           v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
-          tryCatch(expr =ggplotRegression(fit=lmp(nb_copy_gene~dnds, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_HGT_strength_VS_dnds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "dN/dS",ylabl = "HGT_strength"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+          tryCatch(expr =ggplotRegression(fit=lmp(nb_uniq_species_of_gene~dnds, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Gene_Mobility_VS_dnds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "dN/dS",ylabl = "Gene_Mobility"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         }
-        #if (length(intersect(which(is.finite(df_current_gene_in_time$nb_copy_gene)),which(is.finite(df_current_gene_in_time$dnds))))>=2){
-          ##log10(HGT_Strength) in function of log10(dN/dS) plot
-          # png(filename = paste0(save_plots_workspace_current_gene,"/HGT_strength_VS_dnds_log10_scale_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
-          # plot(log10(df_current_gene_in_time$nb_copy_gene+(1E-16))~log10(df_current_gene_in_time$dnds+(1E-16)), type="p", pch=19,xlab="log10(dN/dS)",ylab="log10(HGT_strength)",col="red",ylim=c(min(log10(df_current_gene_in_time$nb_copy_gene+(1E-16)),na.rm = TRUE),max(log10(df_current_gene_in_time$nb_copy_gene+(1E-16)),na.rm=TRUE)))
+        #if (length(intersect(which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene)),which(is.finite(df_current_gene_in_time$dnds))))>=2){
+          ##log10(Gene_Mobility) in function of log10(dN/dS) plot
+          # png(filename = paste0(save_plots_workspace_current_gene,"/Gene_Mobility_VS_dnds_log10_scale_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
+          # plot(log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1E-16))~log10(df_current_gene_in_time$dnds+(1E-16)), type="p", pch=19,xlab="log10(dN/dS)",ylab="log10(Gene_Mobility)",col="red",ylim=c(min(log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1E-16)),na.rm = TRUE),max(log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1E-16)),na.rm=TRUE)))
           # dev.off()
-          # current_y <- log10(df_current_gene_in_time$nb_copy_gene+(1E-16))
+          # current_y <- log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1E-16))
           # current_x <- log10(df_current_gene_in_time$dnds+(1E-16))
           # v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
-          # tryCatch(expr = ggplotRegression(fit=lmp(nb_copy_gene ~ dnds, data = log10(df_current_gene_in_time+(1E-16))[v_pos_for_current_reg,],na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("HGT_strength_VS_dnds_in_log10_scale_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "log10(dN/dS)",ylabl = "log10(HGT_strength)"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+          # tryCatch(expr = ggplotRegression(fit=lmp(nb_uniq_species_of_gene ~ dnds, data = log10(df_current_gene_in_time+(1E-16))[v_pos_for_current_reg,],na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("Gene_Mobility_VS_dnds_in_log10_scale_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "log10(dN/dS)",ylabl = "log10(Gene_Mobility)"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         #}
       }
     }
-    #Linear regressions explained by HGT strength
-    adj_r_square_lm_Ne_k_hat_vs_HGT_strength[v_g_ind] <-list_results_current_lm_Ne_k_hat_vs_HGT_strength$adj_r_sq_current_lm
-    adj_r_square_lm_Ne_S_Taj_vs_HGT_strength[v_g_ind] <- list_results_current_lm_Ne_S_Taj_vs_HGT_strength$adj_r_sq_current_lm
-    adj_r_square_lm_D_Taj_vs_HGT_strength[v_g_ind] <- list_results_current_lm_D_Taj_vs_HGT_strength$adj_r_sq_current_lm
-    Slope_lm_Ne_k_hat_vs_HGT_strength[v_g_ind] <- list_results_current_lm_Ne_k_hat_vs_HGT_strength$slope_current_lm
-    Slope_lm_Ne_S_Taj_vs_HGT_strength[v_g_ind] <- list_results_current_lm_Ne_S_Taj_vs_HGT_strength$slope_current_lm
-    Slope_lm_D_Taj_vs_HGT_strength[v_g_ind] <- list_results_current_lm_D_Taj_vs_HGT_strength$slope_current_lm
-    pvalue_lm_Ne_k_hat_vs_HGT_strength[v_g_ind] <- list_results_current_lm_Ne_k_hat_vs_HGT_strength$p_val_current_lm
-    pvalue_lm_Ne_S_Taj_vs_HGT_strength[v_g_ind] <- list_results_current_lm_Ne_S_Taj_vs_HGT_strength$p_val_current_lm
-    pvalue_lm_D_Taj_vs_HGT_strength[v_g_ind] <- list_results_current_lm_D_Taj_vs_HGT_strength$p_val_current_lm
+    #Linear regressions explained by Gene Mobility
+    adj_r_square_lm_Ne_k_hat_vs_Gene_Mobility[v_g_ind] <-list_results_current_lm_Ne_k_hat_vs_Gene_Mobility$adj_r_sq_current_lm
+    adj_r_square_lm_Ne_S_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility$adj_r_sq_current_lm
+    adj_r_square_lm_D_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_D_Taj_vs_Gene_Mobility$adj_r_sq_current_lm
+    Slope_lm_Ne_k_hat_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_Ne_k_hat_vs_Gene_Mobility$slope_current_lm
+    Slope_lm_Ne_S_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility$slope_current_lm
+    Slope_lm_D_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_D_Taj_vs_Gene_Mobility$slope_current_lm
+    pvalue_lm_Ne_k_hat_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_Ne_k_hat_vs_Gene_Mobility$p_val_current_lm
+    pvalue_lm_Ne_S_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility$p_val_current_lm
+    pvalue_lm_D_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_D_Taj_vs_Gene_Mobility$p_val_current_lm
   }
   
-  #Summary Figures of significant HGT_strength effects
-  ggplot() + geom_density(mapping = aes(x = Slope_lm_Ne_k_hat_vs_HGT_strength[pvalue_lm_Ne_k_hat_vs_HGT_strength<=(p_val_threshold)],colour="Ne_k_hat")) + geom_density(mapping = aes(x = Slope_lm_D_Taj_vs_HGT_strength[pvalue_lm_D_Taj_vs_HGT_strength<=(p_val_threshold)],colour="D_Taj")) + geom_density(mapping = aes(x = Slope_lm_Ne_S_Taj_vs_HGT_strength[pvalue_lm_Ne_S_Taj_vs_HGT_strength<=(p_val_threshold)],colour="Ne_S_Taj")) + ggtitle(label = "Distribution of Slopes for regression models in which HGT strength is the explanatory variable") + xlab("Slope") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=9),plot.subtitle = element_text(hjust=0,size=8)) + geom_vline(xintercept = 0,mapping = aes(x = Slope_lm_Ne_k_hat_vs_HGT_strength[pvalue_lm_Ne_k_hat_vs_HGT_strength<=(p_val_threshold)])) + scale_color_manual(name="X ~ HGT strength",values = c(Ne_k_hat="red",Ne_S_Taj="blue",D_Taj="black")) + xlim(-3,3) + ylim(0,10)
-  ggsave(filename = "HGT_str_significant_slopes.png",path = save_plots_workspace_current_sim,width = 18, height = 10, units = "cm")
+  #Summary Figures of significant Gene_Mobility effects
+  ggplot() + geom_density(mapping = aes(x = Slope_lm_Ne_k_hat_vs_Gene_Mobility[pvalue_lm_Ne_k_hat_vs_Gene_Mobility<=(p_val_threshold)],colour="Ne_k_hat")) + geom_density(mapping = aes(x = Slope_lm_D_Taj_vs_Gene_Mobility[pvalue_lm_D_Taj_vs_Gene_Mobility<=(p_val_threshold)],colour="D_Taj")) + geom_density(mapping = aes(x = Slope_lm_Ne_S_Taj_vs_Gene_Mobility[pvalue_lm_Ne_S_Taj_vs_Gene_Mobility<=(p_val_threshold)],colour="Ne_S_Taj")) + ggtitle(label = "Distribution of Slopes for regression models in which Gene Mobility is the explanatory variable") + xlab("Slope") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=9),plot.subtitle = element_text(hjust=0,size=8)) + geom_vline(xintercept = 0,mapping = aes(x = Slope_lm_Ne_k_hat_vs_Gene_Mobility[pvalue_lm_Ne_k_hat_vs_Gene_Mobility<=(p_val_threshold)])) + scale_color_manual(name="X ~ Gene Mobility",values = c(Ne_k_hat="red",Ne_S_Taj="blue",D_Taj="black")) + xlim(-3,3) + ylim(0,10)
+  ggsave(filename = "Gene_Mobility_significant_slopes.png",path = save_plots_workspace_current_sim,width = 18, height = 10, units = "cm")
   
-  ggplot() + geom_boxplot(aes(y=c(adj_r_square_lm_Ne_k_hat_vs_HGT_strength,adj_r_square_lm_Ne_S_Taj_vs_HGT_strength,adj_r_square_lm_D_Taj_vs_HGT_strength),x=rep(x = c("Ne_k_hat","Ne_S_Taj","D_Taj"),each=length(adj_r_square_lm_Ne_k_hat_vs_HGT_strength)))) + xlab("Response variable") + ylab("Adjusted R_squared")
-  ggsave(filename = "HGT_str_significant_adj_R_squared.png",path = save_plots_workspace_current_sim,width = 18, height = 10, units = "cm")  
+  ggplot() + geom_boxplot(aes(y=c(adj_r_square_lm_Ne_k_hat_vs_Gene_Mobility,adj_r_square_lm_Ne_S_Taj_vs_Gene_Mobility,adj_r_square_lm_D_Taj_vs_Gene_Mobility),x=rep(x = c("Ne_k_hat","Ne_S_Taj","D_Taj"),each=length(adj_r_square_lm_Ne_k_hat_vs_Gene_Mobility)))) + xlab("Response variable") + ylab("Adjusted R_squared")
+  ggsave(filename = "Gene_Mobility_significant_adj_R_squared.png",path = save_plots_workspace_current_sim,width = 18, height = 10, units = "cm")  
   
   #save the result matrix of the CURRENT SIMULATION
   mtx_results_current_sim <- as.matrix(df_results_variants_analysis_current_sim)
@@ -2150,7 +2152,7 @@ if (as.integer(num_fitness_landscape) != 7){
 #Interesting genes to look as variant analysis results
 system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("rm -f ",save_plots_workspace_current_sim,"/intersting_genes_variant_analysis.txt"),intern = FALSE,wait = TRUE)
 system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("touch ",save_plots_workspace_current_sim,"/intersting_genes_variant_analysis.txt"),intern = FALSE,wait = TRUE)
-system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("echo \'",paste(v_unique_gene_IDs_current_sim[which(pvalue_lm_Ne_S_Taj_vs_HGT_strength<=(p_val_threshold))],collapse=';'),"\' >> ",save_plots_workspace_current_sim,"/intersting_genes_variant_analysis.txt"),intern = FALSE,wait = TRUE)
+system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("echo \'",paste(v_unique_gene_IDs_current_sim[which(pvalue_lm_Ne_S_Taj_vs_Gene_Mobility<=(p_val_threshold))],collapse=';'),"\' >> ",save_plots_workspace_current_sim,"/intersting_genes_variant_analysis.txt"),intern = FALSE,wait = TRUE)
 
 
 #Only keep .gz files
