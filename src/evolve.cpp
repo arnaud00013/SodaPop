@@ -175,8 +175,7 @@ int main(int argc, char *argv[])
         genesPath = libArg.getValue();
 
         Population::simType = stringToInput_Type(inputArg.getValue());
-        Population::reference_subpops_abundance_map_ = get_ref_map_subpops_abundance(); // define the abundance that user gave in initial
-
+        
         if (seedArg.isSet())
             setRngSeed(seedArg.getValue());
 
