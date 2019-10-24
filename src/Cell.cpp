@@ -80,10 +80,9 @@ Cell::Cell(std::ifstream & cell_in){
                 (*i).ch_f(0.95+randomNumber()*0.02);
             }
             gene_data.close();
-            //if gene A is mobile, add it to mobilomeVec_
+            //if gene A is mobile, add corresponding genomeVec_ index to mobilomeVec_
             if (genomeVec_.back().isMobile()){
-                Gene* ptr_mobile_gene = &(*(genomeVec_.end()-1));
-                mobilomeVec_.push_back(ptr_mobile_gene);
+                mobilomeVec_.push_back(genomeVec_.size()-1);
             }
         }
     }
@@ -115,8 +114,6 @@ Cell::Cell(std::ifstream & IN, const std::string & genesPath){
 
     pev_fe_ = 0;
     sel_coeff_current_mutation_=0;
-    Gene* ptr_mobile_gene = &(*(genomeVec_.end()-1));
-    mobilomeVec_.push_back(ptr_mobile_gene);
     
     //read barcode
     IN.read((char*) & l, sizeof(int));
@@ -183,10 +180,9 @@ Cell::Cell(std::ifstream & IN, const std::string & genesPath){
         G.ch_Ns(Ns);
         G.ch_isMobile(is_mob);
         genomeVec_.push_back(G);
-        //if gene A is mobile, add it to mobilomeVec_
+        //if gene G is mobile, add corresponding genomeVec_ index to mobilomeVec_
         if (genomeVec_.back().isMobile()){
-            Gene* ptr_mobile_gene = &(*(genomeVec_.end()-1));
-            mobilomeVec_.push_back(ptr_mobile_gene);
+            mobilomeVec_.push_back(genomeVec_.size()-1);
         }
     }
     selectFitness();
@@ -585,24 +581,28 @@ void Cell::UpdateNsNa()
 }
 
 // ********** HGT
-bool Cell::any_mobile_gene_present() {
+bool Cell::any_mobile_gene_present() const{
     return (this->mobilomeVec_.size()>0);
 }
 
 bool Cell::select_random_gene_gain() { 
-    // 1. Create a temporary vector of indices corresponding to the actual gene objects
-    std::vector<int> indices(genomeVec_.size());
+    if(!any_mobile_gene_present()){
+        return false;
+    }
+    // 1. Create a temporary vector of mobilomeVec indices corresponding to the actual mobile gene objects
+    std::vector<int> indices(mobilomeVec_.size());
     std::iota(indices.begin(), indices.end(), 0);
     // 2. Shuffle the vector of indices using the already instantiated rng
     std::shuffle(indices.begin(), indices.end(), g_rng);
     // 3. Go through the vector of gene by accessing random positions and look for a mobile gene. Returns true if a mobile genes could be selected and false otherwise
-    for (auto indx : indices){
-        Cell::selected_gene =  Gene(*(this->genomeVec_.begin() + indx),this);
-        if (selected_gene.isMobile()){
-            return true;
-        } 
+    Cell::selected_gene =  Gene(*(this->genomeVec_.begin() + *(mobilomeVec_.begin() + *(indices.begin()))),this);
+    if (selected_gene.isMobile()){
+        return true;
+    } else {
+        std::cerr << "Logical Error: The gene selected in the vector of Mobile genes is not mobile!" << std::endl;
+        exit(2);
     }
-    return false;
+   
 }
 
 int Cell::remove_rand_gene(const double & a_for_s_x,const double & b_for_s_x) {
@@ -618,9 +618,8 @@ int Cell::remove_rand_gene(const double & a_for_s_x,const double & b_for_s_x) {
     // 4. Erase the gene from the vectors. Note that the vectors are automatically resized
     if ((genomeVec_.begin() + indice_removed_gene)->isMobile()){
         int pos_in_mobilomeVec = 0; //find the corresponding pointer in mobilomeVec_ and erase it
-        for (auto const &ptr_gene : mobilomeVec_){
-            if ((&(*ptr_gene))==(&(*(genomeVec_.begin() + indice_removed_gene)))){
-                //std::cout << ((&(*ptr_gene))==(&(*(genomeVec_.begin() + indice_removed_gene)))) << std::endl;
+        for (auto id_gene : mobilomeVec_){
+            if (id_gene == indice_removed_gene){
                 mobilomeVec_.erase(mobilomeVec_.begin()+pos_in_mobilomeVec);
                 break;
             }
@@ -643,9 +642,9 @@ int Cell::remove_rand_gene(const double & a_for_s_x,const double & b_for_s_x) {
 int Cell::add_gene(const double & a_for_s_x,const double & b_for_s_x) {
     Cell::selected_gene.setCell(this);
     genomeVec_.push_back(Cell::selected_gene);
+    //add corresponding genomeVec_ index to mobilomeVec_
     if (genomeVec_.back().isMobile()){
-        Gene* ptr_mobile_gene = &(*(genomeVec_.end()-1));
-        mobilomeVec_.push_back(ptr_mobile_gene);
+        mobilomeVec_.push_back(genomeVec_.size()-1);
     }
     //std::cout<<"Gain event : Cell"<<this->ID()<<" new gene number is "<<n_G.num()<<" and has length : "<<n_G.length()<<std::endl;
     this->geneBlocks_.clear();

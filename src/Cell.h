@@ -84,7 +84,7 @@ public:
     void dumpParent(std::ofstream&) const;
 
     /**** HGT ****/
-    bool any_mobile_gene_present();
+    bool any_mobile_gene_present() const;
     bool select_random_gene_gain();
     int add_gene(const double &,const double &);
     int remove_rand_gene(const double &,const double &);
@@ -135,8 +135,8 @@ protected:
     //used to save the selection coefficient of a mutation event
     double sel_coeff_current_mutation_;
 
-    //Key-Value map containing exclusively the mobile genes (Key=gene ID; Value= Gene pointer)
-    std::vector <Gene*> mobilomeVec_;
+    //Vector of Mobile Genes index in genomeVec_; **NOTE THAT IF YOU WANT TO CONSIDER GENE ORDER / SYNTENY, each time genomeVec_ order would be changed, mobilomeVec_ would have to be updated in consequence!
+    std::vector <int> mobilomeVec_;
 
     //Array of genes (mobile + non-mobile)
     std::vector <Gene> genomeVec_;

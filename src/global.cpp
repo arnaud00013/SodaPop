@@ -1359,8 +1359,7 @@ std::map<std::string, double> get_codon_usage_map(const int the_cell_id, const s
     }
     else{
         // error file does not exist -> throw exception
-        std::string msg_err = "Error! The following .cell file does not exist : "+sstm.str();
-        msg_err += buffer;
+        std::string msg_err = "Error! The following .cell file does not exist : "+buffer;
         throw std::runtime_error(msg_err);
     }
 
@@ -1370,7 +1369,7 @@ std::map<std::string, double> get_codon_usage_map(const int the_cell_id, const s
 
 void normalize_CUF(const int& p_species_id, std::map<int, std::map<std::string, double>>& p_map_of_codon_usag_map){
     //Copy the original codon usage frequencies map; 
-    std::map<std::string, double> old_codon_usage_freq_map = p_map_of_codon_usag_map[p_species_id];
+    std::map<std::string, double> old_codon_usage_freq_map(p_map_of_codon_usag_map[p_species_id]);
     //Calculate normalized RSCUs of synonymous codons (Equation 2 Sharp & Li 1987)
     for (auto it = p_map_of_codon_usag_map[p_species_id].begin();it!=p_map_of_codon_usag_map[p_species_id].end();++it){
         std::string current_codon = it->first;
@@ -1865,33 +1864,56 @@ void normalize_CUF(const int& p_species_id, std::map<int, std::map<std::string, 
 }     
 
 //returns a vector of species ID based on the .cell files
-std::vector<int> get_unique_species(const char* the_cell_files_workspace_path){
+std::vector<int> get_unique_species(){
     std::vector<int> vec_out_species_id;
-    std::vector<std::string> v_files_in_wp;
-    DIR *ptr_dir;
-    struct dirent *the_dirp;
-    if((ptr_dir  = opendir(the_cell_files_workspace_path)) == NULL) {
-        std::cout << "Directory " << the_cell_files_workspace_path << " does not exist!" << std::endl;
+    std::map<int,int> ref_subpops_abundance_map = get_ref_map_subpops_abundance(); 
+    for (auto const &it : ref_subpops_abundance_map.begin(); it != ref_subpops_abundance_map.end();++it){
+        vec_out_species_id.push_back(it->first);
     }
 
-    while ((the_dirp = readdir(ptr_dir)) != NULL) {
-        v_files_in_wp.push_back(std::string(the_dirp->d_name));
-    }
-
-    closedir(ptr_dir);
-    
-    for (auto const &a_file : v_files_in_wp){
-        std::stringstream the_str_ss;
-        std::string str;
-        str = a_file;
-        std::string::size_type i = str.find(".cell");
-        if (i != std::string::npos){
-            int x;
-            str.erase(i, 5); //erase .cell 
-            the_str_ss << str;
-            the_str_ss >> x;
-            vec_out_species_id.push_back(x);
-        }//
-    }   
     return vec_out_species_id;
 }
+
+std::map<int,int> get_ref_map_subpops_abundance(){
+    bool b_f_does_exit = false;
+    std::string line;
+    buffer = "files/start/population.dat"
+    if (FILE *file = fopen(buffer, "r")) {
+        b_f_does_exit = true;
+        fclose(file);
+    }
+    //verify if file exists
+    if (b_f_does_exit){
+        // read subpopulation abundance data and add it to map 
+        std::ifstream the_pop_ifs (buffer, std::ifstream::in);
+        std::map<int,int> out_subpops_abundance_map;        
+        while (!the_pop_ifs.eof()) {
+            getline(the_pop_ifs, line);
+            std::string word;
+            std::istringstream iss(line, std::istringstream:: in );
+            iss >> word;
+            if (word == "C"){
+                iss >> word; //read abundance of current cell type / subpopulation
+                int count_current_subpop = atoi(word.c_str());
+                iss >> word; //read .cell file path
+                //convert .cell file path to cell ID
+                std::string path_cell_file = word;
+                std::string::size_type i = path_cell_file.find(".cell");
+                if (i != std::string::npos){//erase .cell from string
+                    path_cell_file.erase(i, 5); //erase .cell from string
+                }
+                std::string::size_type i = path_cell_file.find("files/start/");
+                if (i != std::string::npos){//erase files/start/ from string
+                    path_cell_file.erase(i, 12); //erase files/start/ from string 
+                }
+                int id_current_subpop = atoi(path_cell_file.c_str());
+                out_subpops_abundance_map[id_current_subpop] = count_current_subpop;
+            }
+    }else{
+        // error file does not exist -> throw exception
+        std::string msg_err = "Error! The following .dat file does not exist : "+buffer;
+        throw std::runtime_error(msg_err);
+    }
+    return out_subpops_abundance_map;
+}
+

@@ -127,7 +127,10 @@ int main(int argc, char *argv[])
         /*## HGT ##*/
 
         /*## SodaPop argument that records if the user want to simulate the fitness effect of codon usage bias ##*/
-        TCLAP::SwitchArg simul_codon_usage_bias_Arg("","simulCUB","Simulate the fitness effect of codon usage bias", cmd, false);
+        TCLAP::SwitchArg simul_codon_usage_bias_Arg("","simulCUB","SodaPop argument that records if the user want to simulate the fitness effect of codon usage bias", cmd, false);
+
+        /*## SodaPop argument that records if the user want the abundance of different cell types (based on Cell ID) to be constant across generations##*/
+        TCLAP::SwitchArg maintain_subpops_abundance_Arg("","maintainSubpopsAb","SodaPop argument that records if the user want the abundance of different cell types (based on Cell ID) to be constant across generations", cmd, false);
 
         //Standard deviation of the codon usage bias Distribution of Fitness Effect (dfe)
         TCLAP::ValueArg<double> standard_dev_cub_dfe_Arg("","stdCubDfe","Standard deviation of the codon usage bias Distribution of Fitness Effect (dfe)",false,0,"double");
@@ -172,6 +175,7 @@ int main(int argc, char *argv[])
         genesPath = libArg.getValue();
 
         Population::simType = stringToInput_Type(inputArg.getValue());
+        Population::reference_subpops_abundance_map_ = get_ref_map_subpops_abundance(); // define the abundance that user gave in initial
 
         if (seedArg.isSet())
             setRngSeed(seedArg.getValue());
@@ -218,6 +222,7 @@ int main(int argc, char *argv[])
             }
             /*## HGT ##*/
         }
+        //use cai to determine synonymous mutations fitness effects
         if (simul_codon_usage_bias_Arg.isSet()){
             simul_codon_usage_bias_effect = simul_codon_usage_bias_Arg.getValue();
             if (simul_codon_usage_bias_effect){
@@ -230,6 +235,11 @@ int main(int argc, char *argv[])
                 }
                 
             }
+        }
+        //Maintain subspecies abundance based on user input
+        if (maintain_subpops_abundance_Arg.isSet()){
+            Population::maintainSubpopsAbundance_ = maintain_subpops_abundance_Arg.getValue();
+            
         }
 
 
@@ -293,8 +303,7 @@ int main(int argc, char *argv[])
     if (simul_codon_usage_bias_effect){ //if codon usage bias fitness effects are simulated create class Cell map of codon usage maps
         //get the vector of unique species ID
         std::vector<int> vec_unique_species_id;
-        char path[] = "files/start";
-        vec_unique_species_id = get_unique_species(path);
+        vec_unique_species_id = get_unique_species();
         std::cout << "-> Loading species codon usage files ..." <<std::endl;
         //Create std::map<int, std::map<std::string, double>> Cell::map_codon_usage_maps_
         for (auto const &current_sp_id : vec_unique_species_id){
@@ -335,9 +344,16 @@ int main(int argc, char *argv[])
         printProgress(currentGen*1.0/maxGen);
 
         //Pangenome evolution events
-        //If the user chose to simulate pangenome evolution select automatically the "multiplicative_without_genes_fit_mean" fitness function
+        //If the user chose to simulate pangenome evolution select automatically the "multiplicative_without_genes_fit_mean" fitness function and make sure that there are mobile genes left
         if (simul_pangenomes_evolution){
         	Cell::ff_ = 9;
+                //make sure that if pangenome evolution is activated, there are mobile genes left
+                if(simul_pangenomes_evolution){
+                    if (!currentPop.anyMobileGenesInPop()){
+                        std::cerr << "Error : pangenome evolution is activated but there are no mobile genes!";
+                        exit(2);
+                    }
+                }
 		currentPop.simul_pev_before_cell_division(CELL_GENE_CONTENT_LOG, GENE_GAIN_EVENTS_LOG, GENE_LOSS_EVENTS_LOG, expected_nb_gain_events, expected_nb_loss_events, ctr_nb_gain_events, ctr_nb_loss_events, total_nb_event_pev_to_sim, ratio_gain_current_gen, lambda_plus, lambda_minus, r_prime, s_prime, a_for_s_x, b_for_s_x, simul_pangenomes_evolution, track_pangenomes_evolution,currentGen,timeStep);
         }
         currentPop.divide(targetBuffer, targetPopSize, MUTATIONLOG,(trackMutations && !noMut),PANGENOMES_EVOLUTION_LOG,track_pangenomes_evolution,lambda_plus, lambda_minus, r_prime, s_prime,currentGen,timeStep);
