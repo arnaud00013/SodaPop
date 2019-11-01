@@ -1,6 +1,13 @@
 //Population summary
 //	Count	File
 
-C	33	files/start/1.cell
-C	33	files/start/2.cell
-C	33	files/start/3.cell
+C	10000	files/start/1.cell
+C	10000	files/start/2.cell
+C	10000	files/start/3.cell
+C	10000	files/start/4.cell
+C	10000	files/start/5.cell
+C	10000	files/start/6.cell
+C	10000	files/start/7.cell
+C	10000	files/start/8.cell
+C	10000	files/start/9.cell
+C	10000	files/start/10.cell
