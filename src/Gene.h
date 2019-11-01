@@ -41,8 +41,6 @@ public:
     static double RandomGamma();
     static double RandomNormal();
     static double RandomExponential();
-    static bool simulCub_; // boolean representing the fact that codon usage bias effects on fitness are simulated or not
-    static double stddev_cub_dfe_;
 
     double Mutate_Stabil_Gaussian(int, int);
     std::string Mutate_Stabil(int, int);
@@ -63,8 +61,6 @@ public:
 
     double conc() const {return conc_;}
     double e() const {return e_;}
-    bool isMobile() const {return isMobile_;}
-    double cai() const {return cai_;}
 
     double functional() const;
     double misfolded() const;
@@ -79,9 +75,6 @@ public:
     void ch_Na(const int a){Na_ = a;}
     void ch_Ns(const int a){Ns_ = a;}
     void ch_e(const double e){e_ = e;}
-    void ch_isMobile(const bool b){isMobile_ = b;}
-
-    void update_cai();
 
     double getS_current_mutation() const;
     void setS_current_mutation(double cumulSumFitEffectMutCurrentGen);
@@ -107,8 +100,6 @@ private:
 
         double conc_;    //concentration
         double e_;       //essentiality: between 0 and 1, can be used as a coefficient
-        bool isMobile_;  //Determine if the gene can be horizontally transferred or lost in a genome
-        double cai_; //Codon adaptation index calculated from sequence and *myCell_ codon usage
 
         double s_current_mutation; //used to save the selection coefficient of a mutation event
 

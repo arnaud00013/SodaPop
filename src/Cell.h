@@ -32,10 +32,9 @@ public:
     static bool useDist_;
     static bool fromS_;
     static Gene selected_gene;
-    static std::map<int, std::map<std::string, double>> map_codon_usage_maps_;//Key = species ID; Value =  Key-Value map of Codon usage frequency (will be converted to Relative Synonymous Codon Usage (RSCU) and normalized by maximum synonymous RSCU at initialization);
 
     Cell();
-    Cell(std::ifstream &);
+    Cell(std::ifstream & );
     Cell(std::ifstream & ,const std::string & );
 
     virtual ~Cell(){};
@@ -54,7 +53,6 @@ public:
     std::string barcode() const {return barcode_;}
     double fitness() const;
     double abs_fitness() const;
-    double get_relative_cuf(const std::string &);
 
     void change_ID(int a) {ID_ = a;}
     void setParent(uint32_t a) {parent_ = a;}
@@ -84,15 +82,14 @@ public:
     void dumpParent(std::ofstream&) const;
 
     /**** HGT ****/
-    bool any_mobile_gene_present() const;
-    bool select_random_gene_gain();
+    void select_random_gene();
     int add_gene(const double &,const double &);
     int remove_rand_gene(const double &,const double &);
     void print_summary_Gene_arr_();
     void print_summary_Gene_L_();
 
-    double get_PevFe() const {return pev_fe_;}
-    void set_PevFe(double PevFe) {pev_fe_ = PevFe;}
+    double get_PevFe() const {return pev_fe;}
+    void set_PevFe(double PevFe) {pev_fe = PevFe;}
 
     double getSelCoeffCurrentMutation() const;
     void setSelCoeffCurrentMutation(double selCoeffCurrentMutation);
@@ -129,20 +126,16 @@ protected:
 
     /**** HGT ****/
     //Pangenome evolution event (gain or loss of genes) fitness effect
-    double pev_fe_;
+    double pev_fe;
+
+     //used to save the selection coefficient of a mutation event
+    double sel_coeff_current_mutation;
     /**** HGT ****/
 
-    //used to save the selection coefficient of a mutation event
-    double sel_coeff_current_mutation_;
-
-    //Vector of Mobile Genes index in genomeVec_; **NOTE THAT IF YOU WANT TO CONSIDER GENE ORDER / SYNTENY, each time genomeVec_ order would be changed, mobilomeVec_ would have to be updated in consequence!
-    std::vector <int> mobilomeVec_;
-
-    //Array of genes (mobile + non-mobile)
+    //Array of genes
     std::vector <Gene> genomeVec_;
-    
-    
-    //Cumulative sum of gene lengths (i.e. genome size)
+
+    //Cummulative sum of gene lengths (i.e. genome size)
     VectInt geneBlocks_;
 
     int Total_Ns_;
