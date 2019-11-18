@@ -39,7 +39,7 @@ nb_cores_variant_analysis <- as.integer(commandArgs(TRUE)[12]) #Number of CPUs u
 ############################################################## Script Body ###################################################
 system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("mkdir -p ",results_output_workspace),intern = FALSE,wait = TRUE)
 
-system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("cat ",sodapop_workspace,"files/start/*.cell | grep -Fhc G > ", results_output_workspace,"start_total_nb_genes.csv"),intern = FALSE,wait = TRUE)
+system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("cat ",sodapop_workspace,"files/start/*.cell | grep -whc G > ", results_output_workspace,"start_total_nb_genes.csv"),intern = FALSE,wait = TRUE)
 system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("ls ",sodapop_workspace,"files/start/*.cell | wc -l >> ", results_output_workspace,"start_total_nb_genes.csv"),intern = FALSE,wait = TRUE)
 
 v_tot_and_mean <- read.csv(file = paste0(results_output_workspace,"start_total_nb_genes.csv"),header = FALSE,sep = "\t",stringsAsFactors = FALSE)$V1
@@ -412,7 +412,7 @@ get_synonymity_stats <- function(the_df_cell_content_log, the_gene_ID,generation
   df_the_gene_in_cells_at_generation_of_interest <- subset(x = the_df_cell_content_log,subset = (gene_ID==the_gene_ID)&(Generation_ctr==generation_of_interest))
   #handle the case when there are no copy of the gene in the current generation
   if (nrow(df_the_gene_in_cells_at_generation_of_interest)==0){
-    return(list(nb_nsm=NA,nb_sm=NA,nb_nss=NA,nb_ss=NA,nb_segregative_sites=NA,nb_copy_g_in_G=0,nb_uniq_species_of_g_in_G=0,a1=NA,Ne_k_hat_gene_in_current_g=NA,Ne_S_Taj_gene_in_current_g=NA,D_Taj_gene_in_current_g=NA))
+    return(list(nb_nsm=NA,nb_sm=NA,nb_nss=NA,nb_ss=NA,nb_segregative_sites=NA,nb_alleles_g_in_G=0,nb_copy_g_in_G=0,nb_uniq_species_of_g_in_G=0,a1=NA,Ne_k_hat_gene_in_current_g=NA,Ne_S_Taj_gene_in_current_g=NA,D_Taj_gene_in_current_g=NA,the_cai=NA))
   }
   gene_seq <- read.csv(file = paste0(sodapop_workspace,"files/genes/",the_gene_ID,".gene"),header = FALSE,sep = "\t",stringsAsFactors = FALSE)$V3[4]
   gene_length <- nchar(gene_seq) 
@@ -1586,6 +1586,7 @@ get_synonymity_stats <- function(the_df_cell_content_log, the_gene_ID,generation
   Nb_nsyn_sites <- (gene_length - Nb_syn_sites)
   #get a1 and the number of copy of a certain gene during a certain generation
   nb_copy_gene_in_current_gen=nrow(df_the_gene_in_cells_at_generation_of_interest)
+  avg_cai_current_gene_during_g <- mean(df_the_gene_in_cells_at_generation_of_interest$cai,na.rm=TRUE)
   nb_uniq_species_of_gene_in_current_gen=length(unique(df_the_gene_in_cells_at_generation_of_interest$cell_ID))
   if (nb_copy_gene_in_current_gen == 0){
     a1_g <- NA
@@ -1611,7 +1612,7 @@ get_synonymity_stats <- function(the_df_cell_content_log, the_gene_ID,generation
   D_Taj_g_during_g <- ((Ne_k_hat_g_during_g - Ne_S_Taj_g_during_g)*(2*mu))/sqrt_expected_variance_current_gene_during_g
   
   #return values of interest
-  return(list(nb_nsm=Nb_nsyn_mutations,nb_sm=Nb_syn_mutations,nb_nss=Nb_nsyn_sites,nb_ss=Nb_syn_sites,nb_segregative_sites=nb_segreg_sites,nb_copy_g_in_G=nb_copy_gene_in_current_gen,nb_uniq_species_of_g_in_G=nb_uniq_species_of_gene_in_current_gen,a1=a1_g,Ne_k_hat_gene_in_current_g=Ne_k_hat_g_during_g,Ne_S_Taj_gene_in_current_g=Ne_S_Taj_g_during_g,D_Taj_gene_in_current_g=D_Taj_g_during_g))
+  return(list(nb_nsm=Nb_nsyn_mutations,nb_sm=Nb_syn_mutations,nb_nss=Nb_nsyn_sites,nb_ss=Nb_syn_sites,nb_segregative_sites=nb_segreg_sites,nb_copy_g_in_G=nb_copy_gene_in_current_gen,nb_alleles_g_in_G= length(unique(df_the_gene_in_cells_at_generation_of_interest$nucl_sequence)),nb_uniq_species_of_g_in_G=nb_uniq_species_of_gene_in_current_gen,a1=a1_g,Ne_k_hat_gene_in_current_g=Ne_k_hat_g_during_g,Ne_S_Taj_gene_in_current_g=Ne_S_Taj_g_during_g,D_Taj_gene_in_current_g=D_Taj_g_during_g,the_cai=avg_cai_current_gene_during_g))
 }
 
 
@@ -1629,25 +1630,25 @@ simulation_time <- max(df_pangenome_evol_sim$Generation_ctr,na.rm=TRUE)
 max_genome_size <- max(df_pangenome_evol_sim$x,na.rm=TRUE)
 min_genome_size <- min(df_pangenome_evol_sim$x,na.rm=TRUE)
 nb_species_simulated <- length(unique(x = na.omit(df_pangenome_evol_sim$cell_ID)))
-ggplot(data=df_pangenome_evol_sim,aes(x = x,colour = cell_ID,fill=cell_ID)) + geom_density(alpha=0.1) + ggtitle(paste0("Distribution of species genome size for simulation ",simulation_name),subtitle = paste0(" (",simulation_time," generations; ",nb_species_simulated," species; N = ",nb_cells_simulated," cells; xi = ",average_nb_genes_per_genomes_at_start,"; x0 = ",wanted_x_0_at_equilibrium,")")) + xlab("Genome size") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=12)) + scale_x_continuous(limits =c(min_genome_size,max_genome_size),breaks = seq(from = min_genome_size,to = max_genome_size,by = 5)) 
+ggplot(data=df_pangenome_evol_sim,aes(x = x,colour = cell_ID,fill=cell_ID)) + geom_density(alpha=0.1) + ggtitle(paste0("Distribution of species genome size for simulation ",simulation_name),subtitle = paste0(" (",simulation_time," generations; ",nb_species_simulated," species; N = ",nb_cells_simulated," cells; xi = ",average_nb_genes_per_genomes_at_start,"; x0 = ",wanted_x_0_at_equilibrium,")")) + xlab("Genome size") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=12)) + scale_x_continuous(limits =c(min_genome_size,max_genome_size),breaks = seq(from = min_genome_size,to = max_genome_size,by = round((max_genome_size-min_genome_size)/10))) 
 ggsave(filename = "Genome_size_distribution.png", path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
 
 #r(x) in function of x
-ggplot(data = df_pangenome_evol_sim, mapping = aes(x = x,y = r_x,col=cell_ID)) + geom_line() + ggtitle(label = paste0("Gene loss rate/Gene gain rate ratio r(x) in function of genome size x for simulation ",simulation_name)) + xlab("Genome size x") + ylab("Gene loss rate/Gene gain rate ratio r(x)")+ geom_hline(yintercept = 1, color = "black",lty=2) + scale_x_continuous(limits =c(min_genome_size,max_genome_size),breaks = seq(from = min_genome_size,to = max_genome_size,by = 5)) 
+ggplot(data = df_pangenome_evol_sim, mapping = aes(x = x,y = r_x,col=cell_ID)) + geom_line() + ggtitle(label = paste0("Gene loss rate/Gene gain rate ratio r(x) in function of genome size x for simulation ",simulation_name)) + xlab("Genome size x") + ylab("Gene loss rate/Gene gain rate ratio r(x)")+ geom_hline(yintercept = 1, color = "black",lty=2) + scale_x_continuous(limits =c(min_genome_size,max_genome_size),breaks = seq(from = min_genome_size,to = max_genome_size,by = round((max_genome_size-min_genome_size)/10))) 
 ggsave(filename = "r_x_VS_x.png", path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
 
 #Beta(x) and Alpha(x) in function of x
-ggplot(data = df_pangenome_evol_sim) + geom_line(mapping = aes(x = x,y = Beta_x,col="Beta(x)")) + geom_line(mapping = aes(x = x,y = Alpha_x,col="Alpha(x)")) + ggtitle(label = paste0("Gene loss rate Beta(x) and gene gain rate Alpha(x) in function of genome size x for simulation ",simulation_name)) + xlab("Genome size x") + ylab("Rates")+ scale_x_continuous(limits =c(min_genome_size,max_genome_size),breaks = seq(from = min_genome_size,to = max_genome_size,by = 5)) 
+ggplot(data = df_pangenome_evol_sim) + geom_line(mapping = aes(x = x,y = Beta_x,col="Beta(x)")) + geom_line(mapping = aes(x = x,y = Alpha_x,col="Alpha(x)")) + ggtitle(label = paste0("Gene loss rate Beta(x) and gene gain rate Alpha(x) in function of genome size x for simulation ",simulation_name)) + xlab("Genome size x") + ylab("Rates")+ scale_x_continuous(limits =c(min_genome_size,max_genome_size),breaks = seq(from = min_genome_size,to = max_genome_size,by = round((max_genome_size-min_genome_size)/10))) 
 ggsave(filename = "Beta_x_and_Alpha_x_VS_x.png", path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
 
 #Fitness(x) in function of x
-ggplot(data = df_pangenome_evol_sim, mapping = aes(x = x,y = fitness,col=cell_ID)) + geom_point() + ggtitle(label = paste0("Fitness in function of genome size x for simulation ",simulation_name)) + xlab("Genome size x") + ylab("Fitness") + scale_x_continuous(limits =c(min_genome_size,max_genome_size),breaks = seq(from = min_genome_size,to = max_genome_size,by = 5)) 
+ggplot(data = df_pangenome_evol_sim, mapping = aes(x = x,y = fitness,col=cell_ID)) + geom_point() + ggtitle(label = paste0("Fitness in function of genome size x for simulation ",simulation_name)) + xlab("Genome size x") + ylab("Fitness") + scale_x_continuous(limits =c(min_genome_size,max_genome_size),breaks = seq(from = min_genome_size,to = max_genome_size,by = round((max_genome_size-min_genome_size)/10))) 
 ggsave(filename = "Fitness_VS_x.png", path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
 
 if (as.integer(num_fitness_landscape) == 9){
   #Plot the expected curve of Alpha_x and Beta_x in function of x (i.e. number of genes) with Koonin's model equations and the parameters I used for the type1 and type3 simulations
   expected_intercept_current_sim <- curve_intersect(curve1 = function(x) sPrime*(x^lambdaPlus),curve2 = function(x) rPrime*(x^lambdaMinus) , empirical = FALSE, domain = c(min(c(round(wanted_x_0_at_equilibrium/1.25),round(average_nb_genes_per_genomes_at_start/1.25)),na.rm = TRUE),max(c(round(wanted_x_0_at_equilibrium*1.25),round(average_nb_genes_per_genomes_at_start*1.25)),na.rm = TRUE)))
-  ggplot(data.frame(x=seq(from = min(c(round(wanted_x_0_at_equilibrium/1.25),round(average_nb_genes_per_genomes_at_start/1.25)),na.rm = TRUE), to = max(c(round(wanted_x_0_at_equilibrium*1.25),round(average_nb_genes_per_genomes_at_start*1.25)),na.rm = TRUE),by = 1)), aes(x)) + stat_function(fun=function(x) sPrime*(x^lambdaPlus),col="blue") + stat_function(fun=function(x) rPrime*(x^lambdaMinus),col="red") + scale_x_continuous(limits =c(min(c(round(wanted_x_0_at_equilibrium/1.25),round(average_nb_genes_per_genomes_at_start/1.25)),na.rm = TRUE),max(c(round(wanted_x_0_at_equilibrium*1.25),round(average_nb_genes_per_genomes_at_start*1.25)),na.rm = TRUE)),breaks = seq(from = min(c(round(wanted_x_0_at_equilibrium/1.25),round(average_nb_genes_per_genomes_at_start/1.25)),na.rm = TRUE),to = max(c(round(wanted_x_0_at_equilibrium*1.25),round(average_nb_genes_per_genomes_at_start*1.25)),na.rm = TRUE),by = 1)) + geom_vline(xintercept = expected_intercept_current_sim$x, color = "grey",lty=2) + ggtitle(paste0("Koonin model expected loss rate (red) and gain rate (blue) during simulations; Equilibrium at x = ",expected_intercept_current_sim$x))
+  ggplot(data.frame(x=seq(from = min(c(round(wanted_x_0_at_equilibrium/1.25),round(average_nb_genes_per_genomes_at_start/1.25)),na.rm = TRUE), to = max(c(round(wanted_x_0_at_equilibrium*1.25),round(average_nb_genes_per_genomes_at_start*1.25)),na.rm = TRUE),by = round((max_genome_size-min_genome_size)/10))), aes(x)) + stat_function(fun=function(x) sPrime*(x^lambdaPlus),col="blue") + stat_function(fun=function(x) rPrime*(x^lambdaMinus),col="red") + scale_x_continuous(limits =c(min(c(round(wanted_x_0_at_equilibrium/1.25),round(average_nb_genes_per_genomes_at_start/1.25)),na.rm = TRUE),max(c(round(wanted_x_0_at_equilibrium*1.25),round(average_nb_genes_per_genomes_at_start*1.25)),na.rm = TRUE)),breaks = seq(from = min(c(round(wanted_x_0_at_equilibrium/1.25),round(average_nb_genes_per_genomes_at_start/1.25)),na.rm = TRUE),to = max(c(round(wanted_x_0_at_equilibrium*1.25),round(average_nb_genes_per_genomes_at_start*1.25)),na.rm = TRUE),by = round((max_genome_size-min_genome_size)/10))) + geom_vline(xintercept = expected_intercept_current_sim$x, color = "grey",lty=2) + ggtitle(paste0("Koonin model expected loss rate (red) and gain rate (blue) during simulations; Equilibrium at x = ",expected_intercept_current_sim$x))
   ggsave(filename = paste0("Expected_loss_and_gain_rate_sim_",simulation_name,".png"), path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
   
 }
@@ -1677,7 +1678,7 @@ df_pangenome_evol_sim$pop_fitness_max <- summaryBy(formula = fitness~Generation_
 df_pangenome_evol_sim$pop_count <- summaryBy(formula = x~Generation_ctr+cell_ID,data = df_pangenome_evol_sim,full.dimension = TRUE,FUN = function(the_vector) length(the_vector),fun.names = "count",order = FALSE)$x.count
 
 # #Fixed_Loss_rate(x) eq.4 Koonin(2016) and Fixed_gain_rate(x) eq.3 Koonin(2016) in function of x
-# ggplot(data = df_pangenome_evol_sim) + geom_line(mapping = aes(x = x,y = Beta_x*((-mean((a_for_sx+(b_for_sx*x)),na.rm=TRUE)*exp(-pop_count*-mean((a_for_sx+(b_for_sx*x)),na.rm=TRUE)))/(1-exp(-pop_count*-mean((a_for_sx+(b_for_sx*x)),na.rm=TRUE)))),col="Fixed_Loss_rate(x)")) + geom_line(mapping = aes(x = x,y = Alpha_x*((mean((a_for_sx+(b_for_sx*x)),na.rm=TRUE))/(1-exp(-pop_count*mean((a_for_sx+(b_for_sx*x)),na.rm=TRUE)))),col="Fixed_Gain_rate(x)")) + ggtitle(label = paste0("Fixed Loss rate (eq.4 Koonin 2016) and Fixed gain rate (eq.3 Koonin2016) in function of genome size x for simulation ",simulation_name)) + xlab("Genome size x") + ylab("Rates")+ scale_x_continuous(limits =c(min_genome_size,max_genome_size),breaks = seq(from = min_genome_size,to = max_genome_size,by = 5)) 
+# ggplot(data = df_pangenome_evol_sim) + geom_line(mapping = aes(x = x,y = Beta_x*((-mean((a_for_sx+(b_for_sx*x)),na.rm=TRUE)*exp(-pop_count*-mean((a_for_sx+(b_for_sx*x)),na.rm=TRUE)))/(1-exp(-pop_count*-mean((a_for_sx+(b_for_sx*x)),na.rm=TRUE)))),col="Fixed_Loss_rate(x)")) + geom_line(mapping = aes(x = x,y = Alpha_x*((mean((a_for_sx+(b_for_sx*x)),na.rm=TRUE))/(1-exp(-pop_count*mean((a_for_sx+(b_for_sx*x)),na.rm=TRUE)))),col="Fixed_Gain_rate(x)")) + ggtitle(label = paste0("Fixed Loss rate (eq.4 Koonin 2016) and Fixed gain rate (eq.3 Koonin2016) in function of genome size x for simulation ",simulation_name)) + xlab("Genome size x") + ylab("Rates")+ scale_x_continuous(limits =c(min_genome_size,max_genome_size),breaks = seq(from = min_genome_size,to = max_genome_size,by = round((max_genome_size-min_genome_size)/10))) 
 # ggsave(filename = "Koonin_Fixed_Beta_x_and_Fixed_Alpha_x_VS_x.png", path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
 # 
 #Calculate the increase / decrease ratio of genome size for the different values of population genome size mean recorded during the simulation
@@ -1736,7 +1737,7 @@ ggplot(subset(x = df_pangenome_evol_sim,subset = Generation_ctr%in%c(1,seq(dt,si
   ylab("Genome Size (x)") +
   scale_x_continuous(breaks = seq(0,(simulation_time),round(0.1*simulation_time)))+
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
-ggsave(filename = paste0("Time_series_x_sim_",simulation_name,".png"), path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
+ggsave(filename = paste0("Time_series_x_sim_",simulation_name,".png"), path=save_plots_workspace_current_sim, width = 30, height = 20, units = "cm")
 #time series for log10(x)
 ggplot(subset(x = df_pangenome_evol_sim,subset = Generation_ctr%in%c(1,seq(dt,simulation_time,20))), aes(x=Generation_ctr, y=log10(pop_x_mean+(1E-16)), colour=cell_ID, group=cell_ID)) + 
   geom_errorbar(aes(ymin=log10(pop_x_min+(1E-16)), ymax=log10(pop_x_max+(1E-16))), width=.1, position=pd) +
@@ -1746,7 +1747,7 @@ ggplot(subset(x = df_pangenome_evol_sim,subset = Generation_ctr%in%c(1,seq(dt,si
   ylab("log10(x)") +
   scale_x_continuous(breaks = seq(0,(simulation_time),round(0.1*simulation_time)))+
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
-ggsave(filename = paste0("Time_series_log10_x_sim_",simulation_name,".png"), path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
+ggsave(filename = paste0("Time_series_log10_x_sim_",simulation_name,".png"), path=save_plots_workspace_current_sim, width = 30, height = 20, units = "cm")
 
 #time series for Beta_x
 ggplot(subset(x = df_pangenome_evol_sim,subset = Generation_ctr%in%c(1,seq(dt,simulation_time,20))), aes(x=Generation_ctr, y=pop_Beta_x_mean, colour=cell_ID, group=cell_ID)) + 
@@ -1824,7 +1825,7 @@ ggplot(subset(x = df_pangenome_evol_sim,subset = Generation_ctr%in%c(1,seq(dt,si
   ylab("Cell fitness") +
   scale_x_continuous(breaks = seq(0,(simulation_time),round(0.1*simulation_time)))+
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
-ggsave(filename = paste0("Time_series_fitness_sim_",simulation_name,".png"), path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
+ggsave(filename = paste0("Time_series_fitness_sim_",simulation_name,".png"), path=save_plots_workspace_current_sim, width = 30, height = 20, units = "cm")
 
 #time series for log10(fitness)
 ggplot(subset(x = df_pangenome_evol_sim,subset = Generation_ctr%in%c(1,seq(dt,simulation_time,20))), aes(x=Generation_ctr, y=log10(pop_fitness_mean+(1E-16)), colour=cell_ID, group=cell_ID)) + 
@@ -1835,7 +1836,7 @@ ggplot(subset(x = df_pangenome_evol_sim,subset = Generation_ctr%in%c(1,seq(dt,si
   ylab("log10(Cell fitness)") +
   scale_x_continuous(breaks = seq(0,(simulation_time),round(0.1*simulation_time)))+
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
-ggsave(filename = paste0("Time_series_log10_fitness_sim_",simulation_name,".png"), path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
+ggsave(filename = paste0("Time_series_log10_fitness_sim_",simulation_name,".png"), path=save_plots_workspace_current_sim, width = 30, height = 20, units = "cm")
 
 
 if (as.integer(num_fitness_landscape) != 7){
@@ -1846,7 +1847,7 @@ if (as.integer(num_fitness_landscape) != 7){
   df_cell_gene_content_current_sim <- read.csv(file = paste0(sim_output_workpace,simulation_name,"/CELL_GENE_CONTENT_LOG.txt"),header = TRUE,sep = "\t",stringsAsFactors = FALSE)
   v_generations <- c(1,seq(from=dt,to = simulation_time,by=dt))
   v_unique_gene_IDs_current_sim <- sort(unique(df_cell_gene_content_current_sim$gene_ID))
-  df_results_variants_analysis_current_sim <- data.frame(gene_ID=rep(v_unique_gene_IDs_current_sim,length(v_generations)),Generation_ctr=rep(x = v_generations,each=length(v_unique_gene_IDs_current_sim)),nb_nss=0,nb_ss=0,nb_nsm=0,nb_sm=0,dn=NA,ds=NA,dnds=NA,nb_seg_sites=0,nb_copy_gene=0,nb_uniq_species_of_gene=0,a1=NA,Ne_S_Taj=0,Ne_k_hat=0,D_Taj=NA,stringsAsFactors = FALSE)
+  df_results_variants_analysis_current_sim <- data.frame(gene_ID=rep(v_unique_gene_IDs_current_sim,length(v_generations)),Generation_ctr=rep(x = v_generations,each=length(v_unique_gene_IDs_current_sim)),nb_nss=0,nb_ss=0,nb_nsm=0,nb_sm=0,dn=NA,ds=NA,dnds=NA,avg_cai=NA,nb_seg_sites=0,nb_copy_gene=0,nb_uniq_species_of_gene=0,a1=NA,Ne_S_Taj=0,Ne_k_hat=0,D_Taj=NA,stringsAsFactors = FALSE)
   #Only calculate variant analysis results for few time points
   df_results_variants_analysis_current_sim <- subset(x = df_results_variants_analysis_current_sim,subset = Generation_ctr %in% c(1,seq(from=(dt),to = simulation_time,by=(dt))))
   #number of cpus for variant analysis. Let at least 1 cpus free
@@ -1878,6 +1879,8 @@ if (as.integer(num_fitness_landscape) != 7){
       df_results_variants_analysis_current_sim$dn[p_row_ind] <- dn_current_g_during_g
       ds_current_g_during_g <- nb_sm_current_g_during_g/nb_ss_current_g_during_g
       df_results_variants_analysis_current_sim$ds[p_row_ind] <- ds_current_g_during_g
+      mean_cai_current_g_during_g <- synonymity_infos$the_cai
+      df_results_variants_analysis_current_sim$avg_cai[p_row_ind] <- mean_cai_current_g_during_g
       
       if ((!is.na(nb_sm_current_g_during_g))&(nb_sm_current_g_during_g>0)){
         df_results_variants_analysis_current_sim$dnds[p_row_ind] <- df_results_variants_analysis_current_sim$dn[p_row_ind]/df_results_variants_analysis_current_sim$ds[p_row_ind]
@@ -1906,7 +1909,6 @@ if (as.integer(num_fitness_landscape) != 7){
   df_results_variants_analysis_current_sim <- foreach(the_p_row_ind_begin = v_row_ind_begin,the_p_row_ind_end = v_row_ind_end, .combine = rbind,.export=c("df_cell_gene_content_current_sim","df_results_variants_analysis_current_sim"),.packages=c("ggplot2","nlme","session","doBy","reconPlots","gridExtra"))  %dopar%  main_loop_variants_analysis(p_row_ind_begin = the_p_row_ind_begin,p_row_ind_end = the_p_row_ind_end)
   
   stopCluster(cl)
-  df_results_variants_analysis_current_sim
   #Plots :
   
   #Get gene variants information for the maximal generation at which we have gene sequence variants
@@ -1971,12 +1973,12 @@ if (as.integer(num_fitness_landscape) != 7){
     if (length(na.omit(df_current_gene_in_time$dnds))>=1){
       #dN/dS in function of Generation plot
       png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_dnds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
-      plot(df_current_gene_in_time$dnds~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene dN/dS",col="red",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$dnds,na.rm = TRUE),max(df_current_gene_in_time$dnds,na.rm=TRUE)))
+      plot(df_current_gene_in_time$dnds~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene dN/dS",col="red",xlim=c(1,simulation_time+1),ylim=c(0,10))
       axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
       dev.off()
       #log10(dN/dS) in function of Generation plot
       png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_log10_dnds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
-      plot(log10(df_current_gene_in_time$dnds+(1E-16))~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene log10(dN/dS)",col="red",xlim=c(1,simulation_time+1),ylim=c(min(log10(df_current_gene_in_time$dnds+(1E-16)),na.rm = TRUE),max(log10(df_current_gene_in_time$dnds+(1E-16)),na.rm=TRUE)))
+      plot(log10(df_current_gene_in_time$dnds+(1E-16))~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene log10(dN/dS)",col="red",xlim=c(1,simulation_time+1),ylim=c(-16,1))
       axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
       dev.off()
     }
@@ -1992,8 +1994,14 @@ if (as.integer(num_fitness_landscape) != 7){
       plot(log10(df_current_gene_in_time$dn+(1E-16))~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene log10(dn)",col="red",xlim=c(1,simulation_time+1),ylim=c(min(log10(df_current_gene_in_time$dn+(1E-16)),na.rm = TRUE),max(log10(df_current_gene_in_time$dn+(1E-16)),na.rm=TRUE)))
       axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
       dev.off()
+    }    
+    if (length(na.omit(df_current_gene_in_time$avg_cai))>=1){
+      #avg_cai in function of Generation plot
+      png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_avg_cai_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
+      plot(df_current_gene_in_time$avg_cai~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene average CAI",col="red",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$avg_cai,na.rm = TRUE),max(df_current_gene_in_time$avg_cai,na.rm=TRUE)))
+      axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
+      dev.off()
     }
-    
     if (length(na.omit(df_current_gene_in_time$ds))>=1){
       #ds in function of Generation plot
       png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_ds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
@@ -2011,6 +2019,12 @@ if (as.integer(num_fitness_landscape) != 7){
         tryCatch(expr = ggplotRegression(fit=lmp(dn ~ ds, data = df_current_gene_in_time[v_pos_for_current_reg,],na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("dn_vs_ds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "ds",ylabl = "dn"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
       
       }
+      if (length(intersect(which(is.finite(df_current_gene_in_time$avg_cai)),which(is.finite(df_current_gene_in_time$ds))))>=2){
+        #average_cai vs ds 
+        v_pos_for_current_reg <-intersect(which(is.finite(df_current_gene_in_time$avg_cai)),which(is.finite(df_current_gene_in_time$ds)))
+        tryCatch(expr = ggplotRegression(fit=lmp(avg_cai ~ ds, data = df_current_gene_in_time[v_pos_for_current_reg,],na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("avg_cai_vs_ds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "ds",ylabl = "average CAI"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+      
+      }
     }
 
     if (length(na.omit(df_current_gene_in_time$Ne_S_Taj))>=1){
@@ -2022,20 +2036,12 @@ if (as.integer(num_fitness_landscape) != 7){
         dev.off()
         #log10(Ne_S_Taj) in function of Generation plot
         png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_log10_Ne_S_Taj_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
-        plot(replace(x = log10(df_current_gene_in_time$Ne_S_Taj+(1E-16)),list = which(log10(df_current_gene_in_time$Ne_S_Taj+(1E-16))==-16),values = NA)~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene log10(Ne_S_Taj)",col="red",xlim=c(1,simulation_time+1),ylim=c(min(replace(x = log10(df_current_gene_in_time$Ne_S_Taj+(1E-16)),list = which(log10(df_current_gene_in_time$Ne_S_Taj+(1E-16))==-16),values = NA),na.rm = TRUE),max(replace(x = log10(df_current_gene_in_time$Ne_S_Taj+(1E-16)),list = which(log10(df_current_gene_in_time$Ne_S_Taj+(1E-16))==-16),values = NA),na.rm=TRUE)))
+        plot(replace(x = log10(df_current_gene_in_time$Ne_S_Taj+(1E-16)),list = which(log10(df_current_gene_in_time$Ne_S_Taj+(1E-16))==-16),values = NA)~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene log10(Ne_S_Taj)",col="red",xlim=c(1,simulation_time+1),ylim=c(-16,10))
         axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
         dev.off()
       
     }
     
-    #Ne_S_Taj vs Gene_Mobility (STANDARDIZED)
-    current_y <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$Ne_S_Taj)
-    current_x <-scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_uniq_species_of_gene)
-    v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
-
-    if (length(intersect(which(is.finite(df_current_gene_in_time$Ne_S_Taj)),which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene))))>=2){
-      tryCatch(expr ={list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility=ggplotRegression(fit=lmp(Ne_S_Taj ~ nb_uniq_species_of_gene, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Ne_S_Taj_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized Gene_Mobility",ylabl = "standardized Ne_S_Taj")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
-    }
     if (length(na.omit(df_current_gene_in_time$Ne_k_hat))>=1){
       
         #Ne_k_hat in function of Generation plot
@@ -2045,22 +2051,13 @@ if (as.integer(num_fitness_landscape) != 7){
         dev.off()
         #log10(Ne_k_hat) in function of Generation plot
         png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_log10_Ne_k_hat_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
-        plot(replace(x = log10(df_current_gene_in_time$Ne_k_hat+(1E-16)),list = which(log10(df_current_gene_in_time$Ne_k_hat+(1E-16))==-16),values = NA)~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene log10(Ne_k_hat)",col="red",xlim=c(1,simulation_time+1),ylim=c(min(replace(x = log10(df_current_gene_in_time$Ne_k_hat+(1E-16)),list = which(log10(df_current_gene_in_time$Ne_k_hat+(1E-16))==-16),values = NA),na.rm = TRUE),max(replace(x = log10(df_current_gene_in_time$Ne_k_hat+(1E-16)),list = which(log10(df_current_gene_in_time$Ne_k_hat+(1E-16))==-16),values = NA),na.rm=TRUE)))
+        plot(replace(x = log10(df_current_gene_in_time$Ne_k_hat+(1E-16)),list = which(log10(df_current_gene_in_time$Ne_k_hat+(1E-16))==-16),values = NA)~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene log10(Ne_k_hat)",col="red",xlim=c(1,simulation_time+1),ylim=c(-16,10))
         axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
         dev.off()
       
       
     }
       
-      #Ne_k_hat vs Gene_Mobility (STANDARDIZED)
-      current_y <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$Ne_k_hat)
-      current_x <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_uniq_species_of_gene)
-      v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
-
-    if (length(intersect(which(is.finite(df_current_gene_in_time$Ne_k_hat)),which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene))))>=2){
-      tryCatch(expr ={list_results_current_lm_Ne_k_hat_vs_Gene_Mobility=ggplotRegression(fit=lmp(Ne_k_hat ~ nb_uniq_species_of_gene, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Ne_k_hat_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized Gene_Mobility",ylabl = "standardized Ne_k_hat")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
-    }
-    
     
     if (length(na.omit(df_current_gene_in_time$D_Taj))>=1){
       #D_Taj in function of Generation plot
@@ -2071,16 +2068,73 @@ if (as.integer(num_fitness_landscape) != 7){
       if (length(na.omit(df_current_gene_in_time$dnds))>=1){
         #Time series of dn/ds, Tajima's D and Gene_Mobility (Number of unique species containing the gene)
         png(filename = paste0(save_plots_workspace_current_gene,"/dnds_Tajima_D_and_Gene_Mobility_combined_time_series_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
-        par(mfrow=c(3,1))
-        plot(df_current_gene_in_time$dnds~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene dN/dS",col="blue",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$dnds,na.rm = TRUE),max(df_current_gene_in_time$dnds,na.rm=TRUE)))
-        axis(side=1, c(1,seq(from=(dt*25),to = simulation_time,by=(dt*25))),las=2)
+        par(mfrow=c(3,1)) 
+        plot(df_current_gene_in_time$dnds~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene dN/dS",col="blue",xlim=c(1,simulation_time+1),ylim=c(0,10))
+        axis(side=1, c(1,seq(from=(dt),to = simulation_time,by=(simulation_time/dt))),las=2)
         plot(df_current_gene_in_time$D_Taj~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene Tajima's D",col="red",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$D_Taj,na.rm = TRUE),max(df_current_gene_in_time$D_Taj,na.rm=TRUE)))
-        axis(side=1, at=c(1,seq(from=(dt*25),to = simulation_time,by=(dt*25))),las=2)
+        axis(side=1, at=c(1,seq(from=(dt),to = simulation_time,by=(simulation_time/dt))),las=2)
         plot(df_current_gene_in_time$nb_uniq_species_of_gene~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene Mobility",col="green",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$nb_uniq_species_of_gene,na.rm = TRUE),max(df_current_gene_in_time$nb_uniq_species_of_gene,na.rm=TRUE)))
-        axis(side=1, at=c(1,seq(from=(dt*25),to = simulation_time,by=(dt*25))),las=2)
+        axis(side=1, at=c(1,seq(from=(dt),to = simulation_time,by=(simulation_time/dt))),las=2)
         dev.off()
         
+        png(filename = paste0(save_plots_workspace_current_gene,"/Gene_Mobility_and_number_of_gene_copies_time_series_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 800, height = 600, units = "px")
+        par(mfrow=c(2,1))
+        plot(df_current_gene_in_time$nb_uniq_species_of_gene~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene mobility",col="blue",xlim=c(1,simulation_time+1),ylim=c(0,nb_species_simulated))
+        axis(side=1, c(1,seq(from=(dt),to = simulation_time,by=(simulation_time/dt))),las=2)
+        plot(df_current_gene_in_time$nb_copy_gene~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Number of gene copy",col="blue",xlim=c(1,simulation_time+1),ylim=c(0,max(df_current_gene_in_time$nb_copy_gene,na.rm=TRUE)))
+        axis(side=1, c(1,seq(from=(dt),to = simulation_time,by=(simulation_time/dt))),las=2)
+        dev.off()
+
         par(mfrow=c(1,1))
+        
+        #Do gene mobility analysis only if gene is mobile!
+        system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("grep -ci mobile ",sodapop_workspace,"files/genes/",v_unique_gene_IDs_current_sim[v_g_ind],".gene > ", results_output_workspace,"count_mobile.csv"),intern = FALSE,wait = TRUE)
+        is_mobile_current_gene <- as.integer(read.csv(file = paste0(results_output_workspace,"count_mobile.csv"),header = FALSE,sep = "\t",stringsAsFactors = FALSE)$V1[1])>0
+        system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("rm -f ", results_output_workspace,"count_mobile.csv"),intern = FALSE,wait = TRUE)
+        if (!is_mobile_current_gene){
+            next 
+        }
+        
+        #Ne_k_hat vs Gene_Mobility (STANDARDIZED)
+        current_y <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$Ne_k_hat)
+        current_x <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_uniq_species_of_gene)
+        v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
+
+        if (length(intersect(which(is.finite(df_current_gene_in_time$Ne_k_hat)),which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene))))>=2){
+            tryCatch(expr ={list_results_current_lm_Ne_k_hat_vs_Gene_Mobility=ggplotRegression(fit=lmp(Ne_k_hat ~ nb_uniq_species_of_gene, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Ne_k_hat_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized Gene_Mobility",ylabl = "standardized Ne_k_hat")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+        }
+        
+        #Ne_S_Taj vs Gene_Mobility (STANDARDIZED)
+        current_y <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$Ne_S_Taj)
+        current_x <-scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_uniq_species_of_gene)
+        v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
+
+        if (length(intersect(which(is.finite(df_current_gene_in_time$Ne_S_Taj)),which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene))))>=2){
+            tryCatch(expr ={list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility=ggplotRegression(fit=lmp(Ne_S_Taj ~ nb_uniq_species_of_gene, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Ne_S_Taj_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized Gene_Mobility",ylabl = "standardized Ne_S_Taj")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+        }
+
+        #log(nb_copy_gene + (1E-16)) vs Gene_Mobility 
+        df_current_gene_in_time$ln_nb_copy_gene <- log(df_current_gene_in_time$nb_copy_gene + (1E-16))
+        current_y <- df_current_gene_in_time$ln_nb_copy_gene
+        current_x <- df_current_gene_in_time$nb_uniq_species_of_gene
+        v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
+        current_df_plot <- as.data.frame((df_current_gene_in_time)[v_pos_for_current_reg,])
+
+        if (length(intersect(which(is.finite(current_y)),which(is.finite(current_x))))>=2){
+            tryCatch(expr ={ggplotRegression(fit=lm(ln_nb_copy_gene ~ nb_uniq_species_of_gene, data = current_df_plot, na.action=na.omit), ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("log_nb_copy_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "Gene_Mobility",ylabl = "ln(nb_copy_gene)")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+        }
+        
+        #avg_cai vs Gene_Mobility (STANDARDIZED)
+        current_y <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$avg_cai)
+        current_x <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_uniq_species_of_gene)
+        v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
+
+        if (length(intersect(which(is.finite(df_current_gene_in_time$avg_cai)),which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene))))>=2){
+            tryCatch(expr ={ggplotRegression(fit=lmp(avg_cai ~ nb_uniq_species_of_gene, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_avg_cai_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized Gene_Mobility",ylabl = "standardized average CAI")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+        }       
+        
+        
+        
         if (length(intersect(which(is.finite(df_current_gene_in_time$D_Taj)),which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene))))>=2){
           ##D_Taj in function of Gene_Mobility (STANDARDIZED) plot 
           # png(filename = paste0(save_plots_workspace_current_gene,"/Tajima_D_VS_log10_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
@@ -2095,7 +2149,7 @@ if (as.integer(num_fitness_landscape) != 7){
         if (length(intersect(which(is.finite(df_current_gene_in_time$D_Taj)),which(is.finite(df_current_gene_in_time$dnds))))>=2){
           ##D_Taj in function of dN/dS plot (STANDARDIZED)
           # png(filename = paste0(save_plots_workspace_current_gene,"/Tajima_D_VS_log10_dnds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
-          # plot(df_current_gene_in_time$D_Taj~log10(df_current_gene_in_time$dnds+(1E-16)), type="p", pch=19,xlab="log10(dN/dS)",ylab="Tajima_D",col="red",xlim=c(min(log10(df_current_gene_in_time$dnds+(1E-16)),na.rm = TRUE),max(log10(df_current_gene_in_time$dnds+(1E-16)),na.rm=TRUE)),ylim=c(min(df_current_gene_in_time$D_Taj,na.rm = TRUE),max(df_current_gene_in_time$D_Taj,na.rm=TRUE)))
+          # plot(df_current_gene_in_time$D_Taj~log10(df_current_gene_in_time$dnds+(1E-16)), type="p", pch=19,xlab="log10(dN/dS)",ylab="Tajima_D",col="red",xlim=c(-16,1),ylim=c(min(df_current_gene_in_time$D_Taj,na.rm = TRUE),max(df_current_gene_in_time$D_Taj,na.rm=TRUE)))
           # dev.off()
           df_current_gene_in_time <- subset(x = df_results_variants_analysis_current_sim,subset = (gene_ID==v_unique_gene_IDs_current_sim[v_g_ind])&(!is.na(dnds)))
           current_y <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$D_Taj)
@@ -2149,10 +2203,10 @@ if (as.integer(num_fitness_landscape) != 7){
   write.table(mtx_results_current_sim, file = paste0(save_plots_workspace_current_sim,"/mtx_variants_analysis_results_simulation_",simulation_name,".csv"),row.names=TRUE, na="NA",col.names=TRUE, sep="\t")
   
 }
-#Interesting genes to look as variant analysis results
+#Interesting mobile genes to look as variant analysis results
 system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("rm -f ",save_plots_workspace_current_sim,"/intersting_genes_variant_analysis.txt"),intern = FALSE,wait = TRUE)
 system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("touch ",save_plots_workspace_current_sim,"/intersting_genes_variant_analysis.txt"),intern = FALSE,wait = TRUE)
-system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("echo \'",paste(v_unique_gene_IDs_current_sim[which(pvalue_lm_Ne_S_Taj_vs_Gene_Mobility<=(p_val_threshold))],collapse=';'),"\' >> ",save_plots_workspace_current_sim,"/intersting_genes_variant_analysis.txt"),intern = FALSE,wait = TRUE)
+system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("echo \'",paste(v_unique_gene_IDs_current_sim[which(pvalue_lm_Ne_S_Taj_vs_Gene_Mobility<=(p_val_threshold))],collapse=';'),"\' >> ",save_plots_workspace_current_sim,"/interesting_mobile_genes_variant_analysis.txt"),intern = FALSE,wait = TRUE)
 
 
 #Only keep .gz files
@@ -2165,5 +2219,5 @@ save.session(paste0(results_output_workspace,"simulation_",simulation_name,"_RSe
 
 # #Restore Session
 # library("session")
-# results_output_workspace <- "/home/arnaudng/SodaPop_big_sims_with_HGT_and_loss/Sim_Results/"
+# results_output_workspace <- "/home/arnaudng/SodaPop-SodaPop_with_neutral_model_for_HGT_and_gene_loss/Sim_Results/"
 # restore.session(paste0(results_output_workspace,"simulation_",simulation_name,"_RSession.Rda"))

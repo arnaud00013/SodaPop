@@ -22,6 +22,7 @@
 #include <iterator>
 #include <sys/stat.h>
 #include <stdexcept>
+#include <map>
 
 #include <errno.h>    // errno, ENOENT, EEXIST
 #if defined(_WIN32)
@@ -80,7 +81,7 @@ If the estimated energy is out of this range, the mutation is ignored.
 *****/
 
 const int maxPopSize(1000000);
-const int maxGeneCount(100);
+const int maxGeneCount(5000);
 constexpr int PBWidth(70);
 
 constexpr double ddG_low_bound(-10);
@@ -187,4 +188,8 @@ void qread_Cell(std::ifstream&, std::ofstream&);
 void seqread_Cell(std::ifstream&, std::ofstream&);
 void read_Parent(std::ifstream&, std::ofstream&);
 void read_Cell(std::ifstream&, std::ofstream&, bool);
+std::map<std::string, double> get_codon_usage_map(const int the_cell_id, const std::string& the_cell_filepath); 
+void normalize_CUF(const int& p_species_id, std::map<int, std::map<std::string, double>>& p_map_of_codon_usag_map);
+std::vector<int> get_unique_species();
+std::map<int,int> get_ref_map_subpops_abundance();
 #endif

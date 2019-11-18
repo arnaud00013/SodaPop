@@ -6,6 +6,7 @@ bool Cell::useDist_ = false;
 bool Cell::fromS_ = false;
 
 Gene Cell::selected_gene = Gene();
+std::map<int, std::map<std::string, double>> Cell::map_codon_usage_maps_ = {};
 
 Cell::Cell():
     barcode_(getBarcode()),
@@ -15,18 +16,20 @@ Cell::Cell():
     c_mrate_(0),
     fitness_(0),
     abs_fitness_(0),
-    pev_fe(0),
-    sel_coeff_current_mutation(0)
+    pev_fe_(0),
+    sel_coeff_current_mutation_(0)
     {
+        mobilomeVec_.reserve(maxGeneCount);
         geneBlocks_.reserve(maxGeneCount);
         genomeVec_.reserve(maxGeneCount);
     }
 
 // Construct from cell file
-Cell::Cell(std::ifstream & cell_in) {
-    pev_fe = 0;
-    sel_coeff_current_mutation=0;
+Cell::Cell(std::ifstream & cell_in){
+    pev_fe_ = 0;
+    sel_coeff_current_mutation_=0;
     char mybuffer[140];
+    mobilomeVec_.reserve(maxGeneCount);
     geneBlocks_.reserve(maxGeneCount);
     genomeVec_.reserve(maxGeneCount);
     ch_barcode(getBarcode());
@@ -68,7 +71,7 @@ Cell::Cell(std::ifstream & cell_in) {
             }
             Gene A(gene_data,this);
             genomeVec_.push_back(A);
-
+          
             //Check if gene is correctly inserted
             auto i = genomeVec_.end();
             i--;
@@ -77,6 +80,10 @@ Cell::Cell(std::ifstream & cell_in) {
                 (*i).ch_f(0.95+randomNumber()*0.02);
             }
             gene_data.close();
+            //if gene A is mobile, add corresponding genomeVec_ index to mobilomeVec_
+            if (genomeVec_.back().isMobile()){
+                mobilomeVec_.push_back(genomeVec_.size()-1);
+            }
         }
     }
     selectFitness();
@@ -87,10 +94,10 @@ Cell::Cell(std::ifstream & cell_in) {
 }
 
 // Constructs from a unit cell stored in binary 
-Cell::Cell(std::ifstream & IN,
-    const std::string & genesPath) {
+Cell::Cell(std::ifstream & IN, const std::string & genesPath){
     geneBlocks_.reserve(maxGeneCount);
     genomeVec_.reserve(maxGeneCount);
+    mobilomeVec_.reserve(maxGeneCount);
 
     char mybuffer[140];
     int l(0);
@@ -105,9 +112,9 @@ Cell::Cell(std::ifstream & IN,
     ID_ = cell_id;
     parent_ = 0;
 
-    pev_fe = 0;
-    sel_coeff_current_mutation=0;
-
+    pev_fe_ = 0;
+    sel_coeff_current_mutation_=0;
+    
     //read barcode
     IN.read((char*) & l, sizeof(int));
     //construct vector container with nl elements
@@ -132,6 +139,7 @@ Cell::Cell(std::ifstream & IN,
     int gene_nid(0);
     int Ns(0);
     int Na(0);
+    bool is_mob(false);
 
     std::string DNAsequence;
     for (int j = 0; j < gene_size; ++j) {
@@ -142,8 +150,9 @@ Cell::Cell(std::ifstream & IN,
         IN.read((char*)(&eff), sizeof(double));
         IN.read((char*)(&dg), sizeof(double));
         IN.read((char*)(&f), sizeof(double));
-        IN.read((char*)(&Ns), sizeof(int));
         IN.read((char*)(&Na), sizeof(int));
+        IN.read((char*)(&Ns), sizeof(int));
+        IN.read((char*)(&is_mob),sizeof(bool));
 
         //read DNA sequence
         int nl;
@@ -169,7 +178,13 @@ Cell::Cell(std::ifstream & IN,
         G.Update_Sequences(DNAsequence);
         G.ch_Na(Na);
         G.ch_Ns(Ns);
+        G.ch_isMobile(is_mob);
         genomeVec_.push_back(G);
+        //if gene G is mobile, add corresponding genomeVec_ index to mobilomeVec_
+        if (genomeVec_.back().isMobile()){
+            mobilomeVec_.push_back(genomeVec_.size()-1);
+        }
+        gene_data.close();
     }
     selectFitness();
     // Update current rates
@@ -180,7 +195,7 @@ Cell::Cell(std::ifstream & IN,
 
 void Cell::linkGenes()
 {
-    for (auto gene_it = this->genomeVec_.begin(); gene_it != this->genomeVec_.end(); gene_it++) {
+    for (auto gene_it = this->genomeVec_.begin(); gene_it != this->genomeVec_.end(); ++gene_it) {
         gene_it->setCell(this);
     }
 }
@@ -337,7 +352,7 @@ double Cell::growthRate() const
 
 double Cell::multiplicative_without_genes_fit_mean() const
 {
-    return fitness()*(1.0+getSelCoeffCurrentMutation());
+    return fitness();//relative fitness is not updated here but only when absolute fitness is normalized by fittest
 }
 
 void Cell::UpdateRates()
@@ -345,6 +360,7 @@ void Cell::UpdateRates()
     this->ch_abs_Fitness(abs_fitness()*(1.0+getSelCoeffCurrentMutation()));
     fitness_ = (this->*fit)();
 }
+
 
 void Cell::ranmut_Gene(std::ofstream& log,int ctr)
 {
@@ -462,7 +478,7 @@ double Cell::normalizeFit(double fittest){
         std::cerr << "Population collapse, average fitness is null.\n";
         exit(1);
     }
-    double newfit = fitness()/fittest;
+    double newfit = abs_fitness()/fittest;
     ch_Fitness(newfit);
     return newfit;
 }
@@ -499,9 +515,11 @@ void Cell::dump(std::ofstream& OUT, int cell_index) const
         double eff = gene.eff();
         double dg = -kT*log(gene.dg());
         double f = gene.f();
+        bool is_mob = gene.isMobile();
 
-        int Ns = gene.Ns();
         int Na = gene.Na();
+        int Ns = gene.Ns();
+        
 
         OUT.write((char*)(&gene_nid),sizeof(int));
         OUT.write((char*)(&s),sizeof(double));
@@ -511,12 +529,14 @@ void Cell::dump(std::ofstream& OUT, int cell_index) const
         OUT.write((char*)(&f),sizeof(double));
         OUT.write((char*)(&Na),sizeof(int));
         OUT.write((char*)(&Ns),sizeof(int));
+        OUT.write((char*)(&is_mob),sizeof(bool));
 
         //Save length of nucleo sequence
         std::string DNAsequence = gene.geneSeq();
         int nl = DNAsequence.length();
         OUT.write((char*)&nl, sizeof(int));
         OUT.write(DNAsequence.data(), nl);
+        
     }
 }
 
@@ -562,16 +582,29 @@ void Cell::UpdateNsNa()
 }
 
 // ********** HGT
-void Cell::select_random_gene() {
-    // 1. Create a temporary vector of indices corresponding to the actual gene objects
-    std::vector<int> indices(genomeVec_.size());
+bool Cell::any_mobile_gene_present() const{
+    return (this->mobilomeVec_.size()>0);
+}
+
+bool Cell::select_random_gene_gain() { 
+    if(!any_mobile_gene_present()){
+        return false;
+    }
+    // 1. Create a temporary vector of mobilomeVec indices corresponding to the actual mobile gene objects
+    std::vector<int> indices(mobilomeVec_.size());
     std::iota(indices.begin(), indices.end(), 0);
     // 2. Shuffle the vector of indices using the already instantiated rng
     std::shuffle(indices.begin(), indices.end(), g_rng);
-    // 3. Take the last element as ID of the gene to be selected
-    int ID_random_gene = indices.back();
-    // 4. select the random gene
-    Cell::selected_gene =  Gene(*(this->genomeVec_.begin() + ID_random_gene),this);
+    // 3. Look for a random mobile gene. Returns true if a mobile genes could be selected and false otherwise
+    int random_genome_vec_index = mobilomeVec_[indices.back()];
+    Cell::selected_gene =  Gene(this->genomeVec_[random_genome_vec_index],this);
+    if (selected_gene.isMobile()){
+        return true;
+    } else {
+        std::cerr << "Logical Error: The gene selected in the vector of Mobile genes is not mobile!" << std::endl;
+        exit(2);
+    }
+   
 }
 
 int Cell::remove_rand_gene(const double & a_for_s_x,const double & b_for_s_x) {
@@ -582,9 +615,19 @@ int Cell::remove_rand_gene(const double & a_for_s_x,const double & b_for_s_x) {
     std::shuffle(indices.begin(), indices.end(), g_rng);
     // 3. Take the last element as ID of the gene to be removed
     int indice_removed_gene = indices.back();
-    int ID_removed_gene = (genomeVec_.begin() + indice_removed_gene)->num();
-    // 4. Erase the gene from the vector. Note that the vector is automatically resized
+    int ID_removed_gene = genomeVec_[indice_removed_gene].num();
+    
+    // 4. Erase the gene from the genome vector and update mobilome vector. Note that the vectors are automatically resized
     genomeVec_.erase(genomeVec_.begin() + indice_removed_gene);
+    mobilomeVec_.clear();
+    int pos_in_genome_vec = 0;
+    for (auto the_gene : genomeVec_){
+        if (the_gene.isMobile()){
+            mobilomeVec_.push_back(pos_in_genome_vec);
+        }
+        pos_in_genome_vec++;
+    } 
+    
     this->geneBlocks_.clear();
     this->geneBlocks_.reserve(this->gene_count()-1);
     this->FillGene_L();
@@ -595,10 +638,14 @@ int Cell::remove_rand_gene(const double & a_for_s_x,const double & b_for_s_x) {
     return ID_removed_gene;
 }
 
-//Add the selected gene saved in the static memeber selected_gene in the present cell
+//Add the selected gene saved in the static member selected_gene in the present cell
 int Cell::add_gene(const double & a_for_s_x,const double & b_for_s_x) {
     Cell::selected_gene.setCell(this);
     genomeVec_.push_back(Cell::selected_gene);
+    //add corresponding genomeVec_ index to mobilomeVec_
+    if (genomeVec_.back().isMobile()){
+        mobilomeVec_.push_back(genomeVec_.size()-1);
+    }
     //std::cout<<"Gain event : Cell"<<this->ID()<<" new gene number is "<<n_G.num()<<" and has length : "<<n_G.length()<<std::endl;
     this->geneBlocks_.clear();
     this->geneBlocks_.reserve(this->gene_count()+1);
@@ -623,16 +670,16 @@ void Cell::print_summary_Gene_L_() {
 }
 
 double Cell::getSelCoeffCurrentMutation() const {
-    return sel_coeff_current_mutation;
+    return sel_coeff_current_mutation_;
 }
 
 void Cell::setSelCoeffCurrentMutation(double selCoeffCurrentMutation) {
-    sel_coeff_current_mutation = selCoeffCurrentMutation;
+    sel_coeff_current_mutation_ = selCoeffCurrentMutation;
 }
 
 void Cell::dumpCellGeneContent(std::ofstream& OUT, int GEN_CTR) const {
     for(auto gene_it = this->genomeVec_.begin(); gene_it != this->genomeVec_.end(); ++gene_it){
-        OUT << GEN_CTR << "\t" << this->ID() << "\t" << gene_it->num() << "\t" << gene_it->geneSeq() << std::endl;
+        OUT << GEN_CTR << "\t" << this->ID() << "\t" << gene_it->num() << "\t" << gene_it->geneSeq() << "\t" << gene_it->cai() << std::endl;
     }
 }
 
@@ -655,3 +702,17 @@ void Cell::PrintCell(int cell_ndx) const
       }
       std::cout << std::endl;
 }
+
+double Cell::get_relative_cuf(const std::string & p_codon){
+    std::string the_codon = p_codon;
+    std::replace( the_codon.begin(), the_codon.end(), 'T', 'U'); //convert dna triplets in rna codon sequence (T -> U)
+    std::map<std::string, double>::iterator it = Cell::map_codon_usage_maps_[this->ID()].find(the_codon); //try to find codon in map
+    if ((the_codon.length()!=3) or (it == Cell::map_codon_usage_maps_[this->ID()].end())){
+        std::cerr << "Error : Codon length should be 3 and included in genetic code!" << std::endl;
+        std::cerr << "Candidate sequence is " << the_codon << std::endl;
+        exit(2);
+    }else{
+        return Cell::map_codon_usage_maps_[this->ID()][the_codon];
+    }
+}
+

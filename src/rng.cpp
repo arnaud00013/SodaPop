@@ -17,7 +17,7 @@ void setRngSeed(pcg32::state_type seed)
 }
 
 
-// Return random number in range [0, 1)
+// Return random number in range [0, 1]
 double randomNumber()
 {
     return uniformDist(g_rng);
