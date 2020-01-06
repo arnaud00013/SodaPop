@@ -5,6 +5,7 @@ std::normal_distribution<> Gene::normal_ = std::normal_distribution<>(1.0, 1.0);
 std::exponential_distribution<> Gene::exponential_ = std::exponential_distribution<>(1.0);
 bool Gene::simulCub_ = false; //by default 
 double Gene::stddev_cub_dfe_ = 0; //by default
+std::map<int, double> Gene::map_gene_gain_selective_coeff_ = {};
 
 //Input: gene file
 Gene::Gene(std::ifstream& gene_in, Cell *parent)
@@ -577,7 +578,7 @@ void Gene::update_cai(){
     std::string the_gene_seq_rna = gene_seq_;
     std::replace(the_gene_seq_rna.begin(), the_gene_seq_rna.end(), 'T', 'U'); //convert dna triplets in rna codon sequence (T -> U)
     double sum_ln_w = 0; //initialize the sum of ln(w); Equation 7 Sharp and Li (1987)
-    for (int i = 0; i != the_gene_seq_rna.length(); i=i+3){
+    for (int i = 0; i < the_gene_seq_rna.length(); i=i+3){
         // fetch current codon
         std::string cdn_curr = the_gene_seq_rna.substr(i, 3);
         if (!isnan(myCell_->get_relative_cuf(cdn_curr))){

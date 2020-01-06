@@ -359,8 +359,7 @@ void Population::simul_pev_before_cell_division(std::ofstream& cells_gene_conten
         std::ofstream& loss_log, double& nb_gain_to_sim, double& nb_loss_to_sim,
         int& gain_event_ctr, int& loss_event_ctr,
         int& total_nb_event_pev_to_sim, double& ratio_gain_current_gen,
-        double& lambda_plus, double& lambda_minus, double& r_prime, double& s_prime,
-        double& a_for_s_x, double& b_for_s_x, bool& simul_pangenomes_evolution,
+        double& lambda_plus, double& lambda_minus, double& r_prime, double& s_prime, double& b_for_s_x, bool& simul_pangenomes_evolution,
         bool& track_pangenomes_evolution, int& GENERATION_CTR, int& DT) {
 
     //Start
@@ -373,9 +372,11 @@ void Population::simul_pev_before_cell_division(std::ofstream& cells_gene_conten
                 nb_gain_to_sim = 0;
                 nb_loss_to_sim = 0;
                 // number of gain event
-                nb_gain_to_sim = ((s_prime * pow(cell.gene_count(),lambda_plus)));
+                std::poisson_distribution<int> distribution_gain(((s_prime * pow(cell.gene_count(),lambda_plus))));
+                nb_gain_to_sim = distribution_gain(g_rng);
                 // number of loss event
-                nb_loss_to_sim = ((r_prime*pow(cell.gene_count(),lambda_minus)));
+                std::poisson_distribution<int> distribution_loss(((r_prime*pow(cell.gene_count(),lambda_minus))));
+                nb_loss_to_sim = distribution_loss(g_rng);
                 //Total number of pangenome evolution (gain and loss) events to simulate in the current generation
                 total_nb_event_pev_to_sim = round(nb_gain_to_sim + nb_loss_to_sim);
                 double nb_gain_for_ratio = nb_gain_to_sim;
@@ -401,7 +402,7 @@ void Population::simul_pev_before_cell_division(std::ofstream& cells_gene_conten
                             //std::cout << "Selected cell didn't have any mobile genes for HGT" << std::endl; //if this log is desired, uncomment this code line
                             continue;
                         }
-                        int ID_gene_gained = cell.add_gene(a_for_s_x,b_for_s_x);//this command updates automatically Cell gene array and fitness after gain!
+                        int ID_gene_gained = cell.add_gene(b_for_s_x);//this command updates automatically Cell gene array and fitness after gain!
                         gain_event_ctr++;
                         //If the user activated the option to get pangenome evolution feedbacks, save feedback for the gain event at each DT generations where DT is the time-step
                         if (track_pangenomes_evolution && (((GENERATION_CTR % DT) == 0) || GENERATION_CTR==1)){
@@ -410,7 +411,7 @@ void Population::simul_pev_before_cell_division(std::ofstream& cells_gene_conten
                     }else{
                         if (nb_loss_to_sim > 0){
                             if (cell.gene_count()>1){
-                                int ID_gene_removed = cell.remove_rand_gene(a_for_s_x,b_for_s_x); ////this command updates automatically Cell gene array and fitness after loss!
+                                int ID_gene_removed = cell.remove_rand_gene(b_for_s_x); ////this command updates automatically Cell gene array and fitness after loss!
                                 loss_event_ctr++;
                                 //If the user activated the option to get pangenome evolution feedbacks, save feedback for the loss event at each DT generations where DT is the time-step
                                 if (track_pangenomes_evolution && (((GENERATION_CTR % DT) == 0) || GENERATION_CTR==1)){

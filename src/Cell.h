@@ -86,8 +86,8 @@ public:
     /**** HGT ****/
     bool any_mobile_gene_present() const;
     bool select_random_gene_gain();
-    int add_gene(const double &,const double &);
-    int remove_rand_gene(const double &,const double &);
+    int add_gene(const double &);
+    int remove_rand_gene(const double &);
     void print_summary_Gene_arr_();
     void print_summary_Gene_L_();
 

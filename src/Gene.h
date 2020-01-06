@@ -43,6 +43,7 @@ public:
     static double RandomExponential();
     static bool simulCub_; // boolean representing the fact that codon usage bias effects on fitness are simulated or not
     static double stddev_cub_dfe_;
+    static std::map<int, double> map_gene_gain_selective_coeff_;//Key = species ID; Value =  Selective advantage for gaining a single copy of the current gene
 
     double Mutate_Stabil_Gaussian(int, int);
     std::string Mutate_Stabil(int, int);

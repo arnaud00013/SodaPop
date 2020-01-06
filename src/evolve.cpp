@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
     double lambda_minus = 0;
     double r_prime = 0;
     double s_prime = 0;
-    double a_for_s_x = 0;
+    double exp_rate_s_hgt = 0; 
     double b_for_s_x = 0;
 
     bool simul_pangenomes_evolution = false;
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
         TCLAP::SwitchArg gammaArg("","gamma","Draw selection coefficients from gamma distribution", cmd, false);
         TCLAP::SwitchArg normalArg("","normal","Draw selection coefficients from normal distribution", cmd, false);
         TCLAP::ValueArg<double> alphaArg("","alpha","Alpha parameter of distribution\nGamma -> shape\nNormal -> mean",false,1,"double");
-        TCLAP::ValueArg<double> betaArg("","beta","Beta parameter of distribution\nGamma -> scale\nNormal -> S.D.",false,1,"double");
+        TCLAP::ValueArg<double> betaArg("","beta","Beta parameter of distribution\nGamma -> scale\nNormal -> S.D.",false,0,"double");
         TCLAP::SwitchArg initArg("c","create-single","Create initial population on the fly", cmd, false);
         TCLAP::SwitchArg analysisArg("a","analysis","Enable analysis scripts", cmd, false);
         
@@ -101,8 +101,8 @@ int main(int argc, char *argv[])
         // boolean switch to track pangenomes evolution events (Gain and loss of genes) and also track the evolution of genome size and loss rate / gain rate ratio
         TCLAP::SwitchArg track_pangenomes_evo_Arg("T","track-PanEv","track pangenomes evolution events (Gain and loss of genes) and also track the evolution of genome size and loss rate / gain rate ratio", cmd, false);
 
-        //parameter a to calculate the selection coefficient s(x)
-        TCLAP::ValueArg<double> a_Arg("","aForSx","parameter a to calculate s(x)",false,1,"double");
+        //rate parameter of the exponential distribution that characterizes HGT selective advantage
+        TCLAP::ValueArg<double> ersh_Arg("","exp_rate_s_hgt","rate parameter of the exponential distribution that characterizes HGT selective advantage",false,2E5,"double");
 
         //parameter b to calculate the selection coefficient s(x)
         TCLAP::ValueArg<double> b_Arg("","bForSx","parameter b to calculate s(x)",false,1,"double");
@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
         cmd.add(standard_dev_cub_dfe_Arg);
 
         /*## HGT ##*/
-        cmd.add(a_Arg);
+        cmd.add(ersh_Arg);
         cmd.add(b_Arg);
         cmd.add(r_prime_Arg);
         cmd.add(s_prime_Arg);
@@ -173,7 +173,6 @@ int main(int argc, char *argv[])
 
         Population::simType = stringToInput_Type(inputArg.getValue());
         Population::reference_subpops_abundance_map = get_ref_map_subpops_abundance(); // define the abundance that user gave in initial
-
         if (seedArg.isSet())
             setRngSeed(seedArg.getValue());
 
@@ -211,7 +210,8 @@ int main(int argc, char *argv[])
             lambda_minus = lambda_minus_Arg.getValue();
             r_prime = r_prime_Arg.getValue();
             s_prime = s_prime_Arg.getValue();
-            a_for_s_x = a_Arg.getValue();
+            exp_rate_s_hgt = ersh_Arg.getValue();
+            Gene::map_gene_gain_selective_coeff_ = init_map_gene_s_gain(exp_rate_s_hgt); //fill gene gain selective coef map 
             b_for_s_x = b_Arg.getValue();
             if (exec_variant_analysis_Arg.isSet()){
                 execute_variant_analysis = exec_variant_analysis_Arg.getValue();
@@ -304,6 +304,7 @@ int main(int argc, char *argv[])
         std::cout << "-> All species codon usage files were opened successfully ..." <<std::endl;
     }
 
+    Gene::simulCub_ = simul_codon_usage_bias_effect; //send to the class Gene the boolean telling if codon usage bias fitness effects are simulated
 
     //std::vector <Cell> Cell_arr;
     Population currentPop(startFile, genesPath, targetPopSize, createPop);
@@ -328,8 +329,6 @@ int main(int argc, char *argv[])
     std::cout << "Starting evolution ..." << std::endl;
     CMDLOG << "Starting evolution ..." << std::endl;
     
-    Gene::simulCub_ = simul_codon_usage_bias_effect; //send to the class Gene the boolean telling if codon usage bias fitness effects are simulated
-
     // // PSEUDO WRIGHT-FISHER PROCESS
     while (currentGen < maxGen){
         printProgress(currentGen*1.0/maxGen);
@@ -345,7 +344,7 @@ int main(int argc, char *argv[])
                         exit(2);
                     }
                 }
-		currentPop.simul_pev_before_cell_division(CELL_GENE_CONTENT_LOG, GENE_GAIN_EVENTS_LOG, GENE_LOSS_EVENTS_LOG, expected_nb_gain_events, expected_nb_loss_events, ctr_nb_gain_events, ctr_nb_loss_events, total_nb_event_pev_to_sim, ratio_gain_current_gen, lambda_plus, lambda_minus, r_prime, s_prime, a_for_s_x, b_for_s_x, simul_pangenomes_evolution, track_pangenomes_evolution,currentGen,timeStep);
+		currentPop.simul_pev_before_cell_division(CELL_GENE_CONTENT_LOG, GENE_GAIN_EVENTS_LOG, GENE_LOSS_EVENTS_LOG, expected_nb_gain_events, expected_nb_loss_events, ctr_nb_gain_events, ctr_nb_loss_events, total_nb_event_pev_to_sim, ratio_gain_current_gen, lambda_plus, lambda_minus, r_prime, s_prime, b_for_s_x, simul_pangenomes_evolution, track_pangenomes_evolution,currentGen,timeStep);
         }
         currentPop.divide(targetBuffer, targetPopSize, MUTATIONLOG,(trackMutations && !noMut),PANGENOMES_EVOLUTION_LOG,track_pangenomes_evolution,lambda_plus, lambda_minus, r_prime, s_prime,currentGen,timeStep);
 
@@ -403,21 +402,39 @@ int main(int argc, char *argv[])
             std::string sim_wp = geneListFile; //absolute path of Sodapop workspace initialized with gene list file path
             std::string the_subst_to_remove = "files/genes/gene_list.dat"; //substring of geneListFile to remove to get workspace
             std::string::size_type the_pos_substr_to_remove = sim_wp.find(the_subst_to_remove);
+            std::ostringstream streamObj_rprime;
+            std::ostringstream streamObj_sprime;
+            std::ostringstream streamObj_lambda_plus;
+            std::ostringstream streamObj_lambda_minus;
+            //Add double to streams
+            streamObj_rprime << r_prime;
+            streamObj_sprime << s_prime;
+            streamObj_lambda_plus << lambda_plus;
+            streamObj_lambda_minus << lambda_minus;
+            // Get strings from output string streams
+            std::string strObj_r_prime = streamObj_rprime.str();
+            std::string strObj_s_prime = streamObj_sprime.str();
+            std::string strObj_lambda_plus = streamObj_lambda_plus.str();
+            std::string strObj_lambda_minus = streamObj_lambda_minus.str();
 
             if (the_pos_substr_to_remove != std::string::npos){
                 sim_wp.erase(the_pos_substr_to_remove, the_subst_to_remove.length());
             }
-            //keep a_for_s_x and b_for_s_x digits precision
+            /* In case the user want to do some post-simulation analysis involving exp_rate_s_hgt and b_for_s_x
+            //keep exp_rate_s_hgt and b_for_s_x digits precision
             char buffer_a[32];
             memset(buffer_a, 0, sizeof(buffer_a));
-            snprintf(buffer_a, sizeof(buffer_a), "%g", a_for_s_x);
-            std::string str_a_for_s_x(buffer_a);
+            snprintf(buffer_a, sizeof(buffer_a), "%g", exp_rate_s_hgt);
+            std::string str_exp_rate_s_hgt(buffer_a);
             char buffer_b[32];
             memset(buffer_b, 0, sizeof(buffer_b));
             snprintf(buffer_b, sizeof(buffer_b), "%g", b_for_s_x);
             std::string str_b_for_s_x(buffer_b);
 
-            std::string command = "Rscript "+script+" "+sim_wp+" "+std::to_string(targetPopSize)+" "+std::to_string(timeStep) +" "+outDir+" "+std::to_string(r_prime)+" "+std::to_string(s_prime)+" "+std::to_string(lambda_plus)+" "+std::to_string(lambda_minus)+" "+std::to_string(Cell::ff_)+" "+str_a_for_s_x+" "+str_b_for_s_x+" "+std::to_string(nb_cpus_for_variant_analysis);
+             std::string command = "Rscript "+script+" "+sim_wp+" "+std::to_string(targetPopSize)+" "+std::to_string(timeStep) +" "+outDir+" "+strObj_r_prime+" "+strObj_s_prime+" "+strObj_lambda_plus + " " + strObj_lambda_minus+" " +std::to_string(Cell::ff_)+ " "+std::to_string(nb_cpus_for_variant_analysis) + " " +str_exp_rate_s_hgt+" "+str_b_for_s_x;
+            */
+
+            std::string command = "Rscript "+script+" "+sim_wp+" "+std::to_string(targetPopSize)+" "+std::to_string(timeStep) +" "+outDir+" "+strObj_r_prime+" "+strObj_s_prime+" "+strObj_lambda_plus+" "+strObj_lambda_minus+" "+std::to_string(Cell::ff_)+" "+std::to_string(nb_cpus_for_variant_analysis);
             std::cout << "The command is :" << std::endl;
             std::cout << command << std::endl;
             const char *cmd = command.c_str();

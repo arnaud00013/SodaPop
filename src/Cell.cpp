@@ -396,8 +396,7 @@ void Cell::ranmut_Gene(std::ofstream& log,int ctr)
     //change statement to switch
     if (fromS_){
         if (useDist_){
-			(*j).Mutate_Select_Dist(site,bp);
-			this->setSelCoeffCurrentMutation(j->getS_current_mutation());
+			this->setSelCoeffCurrentMutation((*j).Mutate_Select_Dist(site,bp));
         }
         else{
 			mutation = j->Mutate_Select(site,bp);
@@ -607,7 +606,7 @@ bool Cell::select_random_gene_gain() {
    
 }
 
-int Cell::remove_rand_gene(const double & a_for_s_x,const double & b_for_s_x) {
+int Cell::remove_rand_gene(const double & b_for_s_x) {
     // 1. Create a temporary vector of indices corresponding to the actual gene objects
     std::vector<int> indices(genomeVec_.size());
     std::iota(indices.begin(), indices.end(), 0);
@@ -632,14 +631,13 @@ int Cell::remove_rand_gene(const double & a_for_s_x,const double & b_for_s_x) {
     this->geneBlocks_.reserve(this->gene_count()-1);
     this->FillGene_L();
     //s_loss(x) = -s_gain(x)
-    this->set_PevFe(-1*(a_for_s_x + (b_for_s_x * this->gene_count())));
-    this->ch_Fitness(this->fitness() * (1 + (this->get_PevFe())));
+    this->set_PevFe(-1*(Gene::map_gene_gain_selective_coeff_[ID_removed_gene] + (b_for_s_x * this->gene_count())));
     this->ch_abs_Fitness(this->abs_fitness() * (1 + (this->get_PevFe())));
     return ID_removed_gene;
 }
 
 //Add the selected gene saved in the static member selected_gene in the present cell
-int Cell::add_gene(const double & a_for_s_x,const double & b_for_s_x) {
+int Cell::add_gene(const double & b_for_s_x) {
     Cell::selected_gene.setCell(this);
     genomeVec_.push_back(Cell::selected_gene);
     //add corresponding genomeVec_ index to mobilomeVec_
@@ -650,8 +648,7 @@ int Cell::add_gene(const double & a_for_s_x,const double & b_for_s_x) {
     this->geneBlocks_.clear();
     this->geneBlocks_.reserve(this->gene_count()+1);
     this->FillGene_L();
-    this->set_PevFe(a_for_s_x + (b_for_s_x * this->gene_count()));
-    this->ch_Fitness(this->fitness() * (1+ (this->get_PevFe())));
+    this->set_PevFe(Gene::map_gene_gain_selective_coeff_[Cell::selected_gene.num()] + (b_for_s_x * this->gene_count()));
     this->ch_abs_Fitness(this->abs_fitness() * (1 + (this->get_PevFe())));
     return Cell::selected_gene.num();
 }

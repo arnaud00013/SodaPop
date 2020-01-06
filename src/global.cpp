@@ -1922,3 +1922,78 @@ std::map<int,int> get_ref_map_subpops_abundance(){
     }
 }
 
+std::map<int, double> init_map_gene_s_gain(double p_exp_rate){
+    //Read files/genes/gene_list.dat and each time a gene is specified, read it, convert string of the gene ID into int ID, initialize an Exponential distribution random number generator (rate= p_exp_rate),  add to a map a key:value = int ID : randomly drawn number (gene gain selective coefficient)
+    bool b_f_does_exit = false;
+    std::map<int, double> out_map_sel_adv_genes;
+    std::string line;
+    std::string path_file = "files/genes/gene_list.dat";
+    sprintf(buffer,"%s",path_file.c_str());
+    if (FILE *file = fopen(buffer, "r")) {
+        b_f_does_exit = true;
+        fclose(file);
+    }
+    //verify if file exists
+    if (b_f_does_exit){
+        std::ofstream s_hgt_genes_file;
+        s_hgt_genes_file.open ("files/genes/sel_coeff_gain_genes.csv");
+        s_hgt_genes_file << "gene_id" << "\t" << "s_gain" << std::endl;
+        // read gene IDs one by one and add them in out_map_sel_adv_genes with a randomly drawn HGT selective advantage as value 
+        std::ifstream the_gene_list_ifs (buffer, std::ifstream::in);
+		if (p_exp_rate<=0){//when user input negative or null for the rate parameter of the exponential distribution of HGT selective coefficient (exp_rate_s_hgt), automatically set all genes hgt rates to 0
+            std::cout << "HGT will be neutral, because input exp_rate_s_hgt <=0!" << std::endl;
+            std::ifstream the_gene_list_ifs (buffer, std::ifstream::in);
+            while (!the_gene_list_ifs.eof()) {
+                getline(the_gene_list_ifs, line);
+                std::string word;
+                std::istringstream iss(line, std::istringstream:: in );
+                iss >> word;
+                if (word == "G"){
+                    iss >> word; //read current gene file name
+                    //convert .gene file name to gene ID
+                    std::string gene_file_name = word;
+                    std::string query_str(".gene");
+                    std::size_t i = gene_file_name.find(query_str);
+                    if (i != std::string::npos){//erase .gene from string
+                        gene_file_name.erase(i, 5); //erase .gene from string
+                    }
+                    int id_current_gene = atoi(gene_file_name.c_str());
+                    out_map_sel_adv_genes[id_current_gene] = 0;
+                    s_hgt_genes_file << id_current_gene << "\t" << out_map_sel_adv_genes[id_current_gene] << std::endl;//record selective coefficient of current gene in files/genes/sel_coeff_gain_genes.csv
+                }
+            }
+        }else{
+            //initialize Exponential distribution random number generator
+            std::exponential_distribution<> the_exponential_rng;
+            the_exponential_rng.param(std::exponential_distribution<>::param_type(p_exp_rate));
+            while (!the_gene_list_ifs.eof()) {
+                getline(the_gene_list_ifs, line);
+                std::string word;
+                std::istringstream iss(line, std::istringstream:: in );
+                iss >> word;
+                if (word == "G"){
+                    iss >> word; //read current gene file name
+                    //convert .gene file name to gene ID
+                    std::string gene_file_name = word;
+                    std::string query_str(".gene");
+                    std::size_t i = gene_file_name.find(query_str);
+                    if (i != std::string::npos){//erase .gene from string
+                        gene_file_name.erase(i, 5); //erase .gene from string
+                    }
+                    int id_current_gene = atoi(gene_file_name.c_str());
+                    out_map_sel_adv_genes[id_current_gene] = the_exponential_rng(g_rng);
+                    s_hgt_genes_file << id_current_gene << "\t" << out_map_sel_adv_genes[id_current_gene] << std::endl;//record selective coefficient of current gene in files/genes/sel_coeff_gain_genes.csv
+                }
+            }
+        }
+	
+        the_gene_list_ifs.close();
+        s_hgt_genes_file.close();
+        return  out_map_sel_adv_genes;
+    }else{
+        // error file does not exist -> throw exception
+        std::string msg_err = "Error! The following .dat file does not exist : "+std::string(buffer);
+        throw std::runtime_error(msg_err);
+    }
+    
+}

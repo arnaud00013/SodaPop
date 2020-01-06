@@ -192,4 +192,5 @@ std::map<std::string, double> get_codon_usage_map(const int the_cell_id, const s
 void normalize_CUF(const int& p_species_id, std::map<int, std::map<std::string, double>>& p_map_of_codon_usag_map);
 std::vector<int> get_unique_species();
 std::map<int,int> get_ref_map_subpops_abundance();
+std::map<int, double> init_map_gene_s_gain(double exp_rate);
 #endif
