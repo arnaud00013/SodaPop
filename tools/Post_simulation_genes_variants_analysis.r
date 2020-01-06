@@ -32,9 +32,9 @@ lambdaPlus <- as.numeric(commandArgs(TRUE)[7]) #See Sela, Wolf & Koonin (2016) p
 lambdaMinus <- as.numeric(commandArgs(TRUE)[8]) #See Sela, Wolf & Koonin (2016) parameter lambda-
 lambda <-lambdaMinus - lambdaPlus #See Sela, Wolf & Koonin (2016) parameter lambda
 num_fitness_landscape <- as.integer(commandArgs(TRUE)[9]) #Fitness landscape function number in Sodapop documentation
-a_for_sx <- as.numeric(commandArgs(TRUE)[10]) #See Sela, Wolf & Koonin (2016) Equation 10
-b_for_sx <- as.numeric(commandArgs(TRUE)[11]) #See Sela, Wolf & Koonin (2016) Equation 10
-nb_cores_variant_analysis <- as.integer(commandArgs(TRUE)[12]) #Number of CPUs used for genes variant analysis
+nb_cores_variant_analysis <- as.integer(commandArgs(TRUE)[10]) #Number of CPUs used for genes variant analysis
+#a_for_sx <- as.numeric(commandArgs(TRUE)[11]) #See Sela, Wolf & Koonin (2016) Equation 10
+#b_for_sx <- as.numeric(commandArgs(TRUE)[12]) #See Sela, Wolf & Koonin (2016) Equation 10
 
 ############################################################## Script Body ###################################################
 system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("mkdir -p ",results_output_workspace),intern = FALSE,wait = TRUE)
@@ -49,7 +49,7 @@ system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("rm -f ", resu
 
 #function for plotting linear model
 ggplotRegression <- function (fit,ggsave_path,the_filename,xlabl=NA,ylabl=NA) {
-  require(ggplot2)
+  library(ggplot2)
   bool_gg_save <- TRUE
   if(is.na(xlabl)){
     xlabl <- names(fit$model)[2]
@@ -57,9 +57,9 @@ ggplotRegression <- function (fit,ggsave_path,the_filename,xlabl=NA,ylabl=NA) {
   if(is.na(ylabl)){
     ylabl <- names(fit$model)[1]
   }
-  adj_r_sq <- formatC(summary(fit)$adj.r.squared, format = "e", digits = 2)
-  slope <-formatC(summary(fit)$coefficients[,1][2], format = "e", digits = 2)
-  p_val <- formatC(summary(fit)$coefficients[,3][2], format = "e", digits = 3)
+  adj_r_sq <- formatC(summary(fit)$adj.r.squared, format = "e", digits = 3)
+  slope <-formatC(summary(fit)$coefficients[,1][2], format = "e", digits = 3)
+  p_val <- formatC(summary(fit)$coefficients[,2][2], format = "e", digits = 3)
   tryCatch(expr = {ggplot(fit$model, aes_string(x = names(fit$model)[2], y = names(fit$model)[1])) +
     geom_point() +
     stat_smooth(method = "lm", col = "red") +
@@ -75,9 +75,9 @@ ggplotRegression <- function (fit,ggsave_path,the_filename,xlabl=NA,ylabl=NA) {
         print(paste0(the_filename, "won't be created because of it is irrelevant for gene in path ", ggsave_path))
     }
     #return result as the real float numbers
-    adj_r_sq <- summary(fit)$adj.r.squared
-    slope <-summary(fit)$coefficients[,1][2]
-    p_val <- summary(fit)$coefficients[,3][2]
+    adj_r_sq <- unname(summary(fit)$adj.r.squared)
+    slope <-unname(summary(fit)$coefficients[,1][2])
+    p_val <- unname(summary(fit)$coefficients[,2][2])
   return(list(adj_r_sq_current_lm = adj_r_sq,slope_current_lm = slope,p_val_current_lm=p_val))
 }
 
@@ -404,15 +404,17 @@ get_synonymity_stats <- function(the_df_cell_content_log, the_gene_ID,generation
   #Initializations
   Nb_syn_sites <- 0 #number of synonymous sites
   Nb_nsyn_sites <- 0 #number of non-synonymous sites
-  Nb_syn_mutations <- 0 #number of synonymous mutations COMPARED TO THE REFERENCE GENE SEQUENCE AT TIME 0 (GENERATION 0)
-  Nb_nsyn_mutations <- 0 #number of non-synonymous mutations COMPARED TO THE REFERENCE GENE SEQUENCE AT TIME 0 (GENERATION 0)
+  Nb_syn_substitutions <- 0 #number of synonymous substitutions COMPARED TO THE REFERENCE GENE SEQUENCE AT TIME 0 (GENERATION 0)
+  Nb_nsyn_substitutions <- 0 #number of non-synonymous substitutions COMPARED TO THE REFERENCE GENE SEQUENCE AT TIME 0 (GENERATION 0)
+  Nb_syn_mutations <- 0 #number of unique synonymous mutations across all copies of the gene in the whole community
+  Nb_nsyn_mutations <- 0 #number of unique non-synonymous mutations across all copies of the gene in the whole community
   nb_segreg_sites <- 0 #number of segregating sites
   Nb_pwdiff_gene <- 0 #initialize the variable that will represent the number of pairwise differences in the gene
   
   df_the_gene_in_cells_at_generation_of_interest <- subset(x = the_df_cell_content_log,subset = (gene_ID==the_gene_ID)&(Generation_ctr==generation_of_interest))
   #handle the case when there are no copy of the gene in the current generation
   if (nrow(df_the_gene_in_cells_at_generation_of_interest)==0){
-    return(list(nb_nsm=NA,nb_sm=NA,nb_nss=NA,nb_ss=NA,nb_segregative_sites=NA,nb_alleles_g_in_G=0,nb_copy_g_in_G=0,nb_uniq_species_of_g_in_G=0,a1=NA,Ne_k_hat_gene_in_current_g=NA,Ne_S_Taj_gene_in_current_g=NA,D_Taj_gene_in_current_g=NA,the_cai=NA))
+    return(list(nb_sm=NA,nb_nsm=NA,nb_ns_sub=NA,nb_s_sub=NA, nb_nss=NA,nb_ss=NA,nb_segregative_sites=NA,nb_alleles_g_in_G=0,nb_copy_g_in_G=0,nb_uniq_species_of_g_in_G=0,a1=NA,Ne_k_hat_gene_in_current_g=NA,Ne_S_Taj_gene_in_current_g=NA,D_Taj_gene_in_current_g=NA,the_cai=NA))
   }
   gene_seq <- read.csv(file = paste0(sodapop_workspace,"files/genes/",the_gene_ID,".gene"),header = FALSE,sep = "\t",stringsAsFactors = FALSE)$V3[4]
   gene_length <- nchar(gene_seq) 
@@ -427,7 +429,7 @@ get_synonymity_stats <- function(the_df_cell_content_log, the_gene_ID,generation
     colmask(myMaskedAlignment) <- colM
     unmasked_alignment <- unmasked(myMaskedAlignment)
     
-    #go through the gene sequence and calculate Nb_syn_sites, Nb_syn_mutations, Nb_nsyn_mutations
+    #go through the gene sequence and calculate Nb_syn_sites, Nb_syn_substitutions, Nb_nsyn_substitutions
     for (pos_in_gene in seq(from = 1,to = gene_length,by = 3)){
       current_codon_gene <- substr(x = gene_seq,start = pos_in_gene,stop=pos_in_gene+2)
       Nb_syn_sites <- Nb_syn_sites + calculate_third_of_possible_ns_codon(current_codon_gene)
@@ -440,555 +442,682 @@ get_synonymity_stats <- function(the_df_cell_content_log, the_gene_ID,generation
         print(paste("problem with codon length for gene ",df_site$contig_name, " at 0-based position ",df_site$pos, ", original codon is ", original_codon, "mutated codons are ", mutated_codons," and gene sequence is ",gene_seq))
         stop()
       }
-      nb_sm_consensus <- 0 #initialization 
-      nb_nsm_consensus <- 0 #initialization 
-      #count the number of synonymous and non-synonymous mutations based on the genetic code
+      nb_ss_consensus <- 0 #initialization 
+      nb_nss_consensus <- 0 #initialization
+      nb_synonymous_mutations <- 0 #initialization 
+      nb_non_synonymous_mutations <- 0 #initialization
+      #count the number of synonymous and non-synonymous mutations+substitutions based on the genetic code
       if (original_codon == "TTT") {
-        
-        
-        nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TTC"))
-        nb_nsm_consensus <- 1 - nb_sm_consensus
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TTC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TTC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TTC"))
+        nb_nss_consensus <- 1 - nb_ss_consensus
         
       } else if (original_codon == "TTC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TTT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TTT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TTT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TTT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TTA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TTG","CTT","CTC","CTA","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TTG","CTT","CTC","CTA","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TTG","CTT","CTC","CTA","CTG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TTG","CTT","CTC","CTA","CTG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TTG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TTA","CTT","CTC","CTA","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TTA","CTT","CTC","CTA","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TTA","CTT","CTC","CTA","CTG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TTA","CTT","CTC","CTA","CTG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TCT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TCC","TCA","TCG","AGT","AGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TCC","TCA","TCG","AGT","AGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TCC","TCA","TCG","AGT","AGC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TCC","TCA","TCG","AGT","AGC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TCC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TCT","TCA","TCG","AGT","AGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TCT","TCA","TCG","AGT","AGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TCT","TCA","TCG","AGT","AGC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TCT","TCA","TCG","AGT","AGC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TCA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TCT","TCC","TCG","AGT","AGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TCT","TCC","TCG","AGT","AGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TCT","TCC","TCG","AGT","AGC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TCT","TCC","TCG","AGT","AGC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TCG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TCT","TCA","TCC","AGT","AGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TCT","TCA","TCC","AGT","AGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TCT","TCA","TCC","AGT","AGC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TCT","TCA","TCC","AGT","AGC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TAT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TAC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TAC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TAC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TAC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TAC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TAT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TAT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TAT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TAT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TAA"){
-        nb_sm_consensus <- 0
-        nb_nsm_consensus <- 0
+        nb_synonymous_mutations <- 0
+        nb_non_synonymous_mutations <- 0
+        nb_ss_consensus <- 0
+        nb_nss_consensus <- 0
         
       } else if (original_codon == "TAG"){
-        nb_sm_consensus <- 0
-        nb_nsm_consensus <- 0
+        nb_synonymous_mutations <- 0
+        nb_non_synonymous_mutations <- 0
+        nb_ss_consensus <- 0
+        nb_nss_consensus <- 0
         
       } else if (original_codon == "TGT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TGC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TGC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TGC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TGT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TGT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TGT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TGT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TGA"){
-        nb_sm_consensus <- 0
-        nb_nsm_consensus <- 0
+        nb_synonymous_mutations <- 0
+        nb_non_synonymous_mutations <- 0
+        nb_ss_consensus <- 0
+        nb_nss_consensus <- 0
         
       } else if (original_codon == "TGG"){
-        nb_sm_consensus <- 0
-        nb_nsm_consensus <- as.integer(consensus_codon_seq!=original_codon)
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_ss_consensus <- 0
+        nb_nss_consensus <- as.integer(consensus_codon_seq!=original_codon)
         
       } else if (original_codon == "CTT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TTA","TTG","CTC","CTA","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TTA","TTG","CTC","CTA","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TTA","TTG","CTC","CTA","CTG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TTA","TTG","CTC","CTA","CTG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CTC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TTA","TTG","CTT","CTA","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TTA","TTG","CTT","CTA","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TTA","TTG","CTT","CTA","CTG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TTA","TTG","CTT","CTA","CTG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CTA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TTA","TTG","CTT","CTC","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TTA","TTG","CTT","CTC","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TTA","TTG","CTT","CTC","CTG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TTA","TTG","CTT","CTC","CTG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CTG"){
-        nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TTA","TTG","CTT","CTC","CTA"))
-        nb_nsm_consensus <- 1 - nb_sm_consensus
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TTA","TTG","CTT","CTC","CTA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TTA","TTG","CTT","CTC","CTA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TTA","TTG","CTT","CTC","CTA"))
+        nb_nss_consensus <- 1 - nb_ss_consensus
         
       } else if (original_codon == "CCT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CCC","CCA","CCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CCC","CCA","CCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CCC","CCA","CCG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CCC","CCA","CCG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CCC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CCT","CCA","CCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CCT","CCA","CCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CCT","CCA","CCG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CCT","CCA","CCG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CCA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CCT","CCC","CCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CCT","CCC","CCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CCT","CCC","CCG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CCT","CCC","CCG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CCG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CCT","CCC","CCA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CCT","CCC","CCA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CCT","CCC","CCA"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CCT","CCC","CCA"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CAT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CAC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CAC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CAC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CAC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CAC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CAT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CAT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CAT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CAT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CAA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CAG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CAG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CAG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CAG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CAG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CAA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CAA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CAA"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CAA"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CGT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CGC","CGA","CGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CGC","CGA","CGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CGC","CGA","CGG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CGC","CGA","CGG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CGC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CGT","CGA","CGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CGT","CGA","CGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CGT","CGA","CGG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CGT","CGA","CGG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CGA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CGT","CGC","CGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CGT","CGC","CGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CGT","CGC","CGG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CGT","CGC","CGG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CGG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CGT","CGA","CGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CGT","CGA","CGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CGT","CGA","CGC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CGT","CGA","CGC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "ATT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("ATC","ATA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("ATC","ATA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("ATC","ATA"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("ATC","ATA"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "ATC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("ATT","ATA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("ATT","ATA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("ATT","ATA"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("ATT","ATA"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "ATA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("ATC","ATT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("ATC","ATT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("ATC","ATT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("ATC","ATT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "ATG"){
-        nb_sm_consensus <- 0
-        nb_nsm_consensus <- as.integer(consensus_codon_seq!=original_codon)
+        nb_synonymous_mutations <- 0
+        nb_non_synonymous_mutations <- length(mutated_codons)
+        nb_ss_consensus <- 0
+        nb_nss_consensus <- as.integer(consensus_codon_seq!=original_codon)
         
       } else if (original_codon == "ACT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("ACC","ACA","ACG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("ACC","ACA","ACG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("ACC","ACA","ACG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("ACC","ACA","ACG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "ACC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("ACT","ACA","ACG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("ACT","ACA","ACG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("ACT","ACA","ACG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("ACT","ACA","ACG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "ACA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("ACT","ACC","ACG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("ACT","ACC","ACG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("ACT","ACC","ACG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("ACT","ACC","ACG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "ACG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("ACT","ACC","ACA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("ACT","ACC","ACA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("ACT","ACC","ACA"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("ACT","ACC","ACA"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "AAT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("AAC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("AAC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("AAC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("AAC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "AAC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("AAT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("AAT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("AAT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("AAT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "AAA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("AAG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("AAG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("AAG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("AAG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "AAG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("AAA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("AAA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("AAA"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("AAA"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "AGT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("AGC","TCT","TCC","TCA","TCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("AGC","TCT","TCC","TCA","TCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("AGC","TCT","TCC","TCA","TCG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("AGC","TCT","TCC","TCA","TCG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "AGC"){
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("AGT","TCT","TCC","TCA","TCG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("AGT","TCT","TCC","TCA","TCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+          nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("AGT","TCT","TCC","TCA","TCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("AGT","TCT","TCC","TCA","TCG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "AGA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("AGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("AGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("AGG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("AGG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "AGG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("AGA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("AGA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("AGA"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("AGA"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GTT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GTC","GTA","GTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GTC","GTA","GTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GTC","GTA","GTG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GTC","GTA","GTG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GTC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GTT","GTA","GTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GTT","GTA","GTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GTT","GTA","GTG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GTT","GTA","GTG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GTA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GTC","GTT","GTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GTC","GTT","GTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GTC","GTT","GTG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GTC","GTT","GTG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GTG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GTC","GTA","GTT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GTC","GTA","GTT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GTC","GTA","GTT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GTC","GTA","GTT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GCT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GCC","GCA","GCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GCC","GCA","GCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GCC","GCA","GCG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GCC","GCA","GCG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GCC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GCT","GCA","GCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GCT","GCA","GCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GCT","GCA","GCG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GCT","GCA","GCG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GCA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GCC","GCT","GCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GCC","GCT","GCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GCC","GCT","GCG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GCC","GCT","GCG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GCG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GCC","GCA","GCT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GCC","GCA","GCT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GCC","GCA","GCT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GCC","GCA","GCT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GAT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GAC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GAC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GAC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GAC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GAC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GAT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GAT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GAT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GAT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GAA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GAG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GAG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GAG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GAG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GAG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GAA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GAA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GAA"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GAA"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
         
       } else if (original_codon == "GGT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GGC","GGA","GGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GGC","GGA","GGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GGC","GGA","GGG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GGC","GGA","GGG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
         
       } else if (original_codon == "GGC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GGT","GGA","GGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GGT","GGA","GGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GGT","GGA","GGG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GGT","GGA","GGG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
         
       } else if (original_codon == "GGA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GGC","GGT","GGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GGC","GGT","GGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GGC","GGT","GGG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GGC","GGT","GGG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
         
       } else if (original_codon == "GGG"){
-        
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GGC","GGA","GGT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GGC","GGA","GGT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GGC","GGA","GGT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GGC","GGA","GGT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
         
@@ -999,13 +1128,15 @@ get_synonymity_stats <- function(the_df_cell_content_log, the_gene_ID,generation
       nb_seg_site_current_codon <- get_nb_seg_sites_from_codon_seqs(all_codons)
       nb_segreg_sites <- nb_segreg_sites + nb_seg_site_current_codon
       nb_bp_diffs_current_codon <- get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = consensus_codon_seq)
-      Nb_syn_mutations <- Nb_syn_mutations + (nb_sm_consensus*nb_bp_diffs_current_codon)
-      Nb_nsyn_mutations <- Nb_nsyn_mutations + (nb_nsm_consensus*nb_bp_diffs_current_codon)
+      Nb_syn_substitutions <- Nb_syn_substitutions + (nb_ss_consensus*nb_bp_diffs_current_codon)
+      Nb_nsyn_substitutions <- Nb_nsyn_substitutions + (nb_nss_consensus*nb_bp_diffs_current_codon)
+      Nb_syn_mutations <- Nb_syn_mutations + nb_synonymous_mutations
+      Nb_nsyn_mutations <- Nb_nsyn_mutations + nb_non_synonymous_mutations
       
     }#end for loop codons
     
   }else{
-    #go through the gene sequence and calculate Nb_syn_sites, Nb_syn_mutations, Nb_nsyn_mutations
+    #go through the gene sequence and calculate Nb_syn_sites, Nb_syn_substitutions, Nb_nsyn_substitutions
     for (pos_in_gene in seq(from = 1,to = gene_length,by = 3)){
       current_codon_gene <- substr(x = gene_seq,start = pos_in_gene,stop=pos_in_gene+2)
       Nb_syn_sites <- Nb_syn_sites + calculate_third_of_possible_ns_codon(current_codon_gene)
@@ -1017,555 +1148,682 @@ get_synonymity_stats <- function(the_df_cell_content_log, the_gene_ID,generation
         print(paste("problem with codon length for gene ",df_site$contig_name, " at 0-based position ",df_site$pos, ", original codon is ", original_codon, "mutated codons are ", mutated_codons," and gene sequence is ",gene_seq))
         stop()
       }
-      nb_sm_consensus <- 0 #initialization 
-      nb_nsm_consensus <- 0 #initialization 
-      #count the number of synonymous and non-synonymous mutations based on the genetic code
+      nb_ss_consensus <- 0 #initialization 
+      nb_nss_consensus <- 0 #initialization
+      nb_synonymous_mutations <- 0 #initialization 
+      nb_non_synonymous_mutations <- 0 #initialization
+      #count the number of synonymous and non-synonymous mutations+substitutions based on the genetic code
       if (original_codon == "TTT") {
-        
-        
-        nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TTC"))
-        nb_nsm_consensus <- 1 - nb_sm_consensus
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TTC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TTC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TTC"))
+        nb_nss_consensus <- 1 - nb_ss_consensus
         
       } else if (original_codon == "TTC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TTT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TTT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TTT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TTT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TTA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TTG","CTT","CTC","CTA","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TTG","CTT","CTC","CTA","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TTG","CTT","CTC","CTA","CTG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TTG","CTT","CTC","CTA","CTG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TTG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TTA","CTT","CTC","CTA","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TTA","CTT","CTC","CTA","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TTA","CTT","CTC","CTA","CTG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TTA","CTT","CTC","CTA","CTG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TCT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TCC","TCA","TCG","AGT","AGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TCC","TCA","TCG","AGT","AGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TCC","TCA","TCG","AGT","AGC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TCC","TCA","TCG","AGT","AGC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TCC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TCT","TCA","TCG","AGT","AGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TCT","TCA","TCG","AGT","AGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TCT","TCA","TCG","AGT","AGC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TCT","TCA","TCG","AGT","AGC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TCA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TCT","TCC","TCG","AGT","AGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TCT","TCC","TCG","AGT","AGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TCT","TCC","TCG","AGT","AGC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TCT","TCC","TCG","AGT","AGC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TCG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TCT","TCA","TCC","AGT","AGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TCT","TCA","TCC","AGT","AGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TCT","TCA","TCC","AGT","AGC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TCT","TCA","TCC","AGT","AGC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TAT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TAC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TAC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TAC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TAC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TAC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TAT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TAT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TAT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TAT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TAA"){
-        nb_sm_consensus <- 0
-        nb_nsm_consensus <- 0
+        nb_synonymous_mutations <- 0
+        nb_non_synonymous_mutations <- 0
+        nb_ss_consensus <- 0
+        nb_nss_consensus <- 0
         
       } else if (original_codon == "TAG"){
-        nb_sm_consensus <- 0
-        nb_nsm_consensus <- 0
+        nb_synonymous_mutations <- 0
+        nb_non_synonymous_mutations <- 0
+        nb_ss_consensus <- 0
+        nb_nss_consensus <- 0
         
       } else if (original_codon == "TGT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TGC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TGC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TGC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TGT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TGT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TGT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TGT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "TGA"){
-        nb_sm_consensus <- 0
-        nb_nsm_consensus <- 0
+        nb_synonymous_mutations <- 0
+        nb_non_synonymous_mutations <- 0
+        nb_ss_consensus <- 0
+        nb_nss_consensus <- 0
         
       } else if (original_codon == "TGG"){
-        nb_sm_consensus <- 0
-        nb_nsm_consensus <- as.integer(consensus_codon_seq!=original_codon)
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_ss_consensus <- 0
+        nb_nss_consensus <- as.integer(consensus_codon_seq!=original_codon)
         
       } else if (original_codon == "CTT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TTA","TTG","CTC","CTA","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TTA","TTG","CTC","CTA","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TTA","TTG","CTC","CTA","CTG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TTA","TTG","CTC","CTA","CTG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CTC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TTA","TTG","CTT","CTA","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TTA","TTG","CTT","CTA","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TTA","TTG","CTT","CTA","CTG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TTA","TTG","CTT","CTA","CTG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CTA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TTA","TTG","CTT","CTC","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TTA","TTG","CTT","CTC","CTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TTA","TTG","CTT","CTC","CTG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TTA","TTG","CTT","CTC","CTG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CTG"){
-        nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("TTA","TTG","CTT","CTC","CTA"))
-        nb_nsm_consensus <- 1 - nb_sm_consensus
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("TTA","TTG","CTT","CTC","CTA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("TTA","TTG","CTT","CTC","CTA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("TTA","TTG","CTT","CTC","CTA"))
+        nb_nss_consensus <- 1 - nb_ss_consensus
         
       } else if (original_codon == "CCT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CCC","CCA","CCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CCC","CCA","CCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CCC","CCA","CCG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CCC","CCA","CCG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CCC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CCT","CCA","CCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CCT","CCA","CCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CCT","CCA","CCG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CCT","CCA","CCG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CCA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CCT","CCC","CCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CCT","CCC","CCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CCT","CCC","CCG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CCT","CCC","CCG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CCG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CCT","CCC","CCA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CCT","CCC","CCA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CCT","CCC","CCA"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CCT","CCC","CCA"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CAT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CAC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CAC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CAC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CAC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CAC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CAT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CAT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CAT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CAT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CAA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CAG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CAG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CAG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CAG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CAG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CAA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CAA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CAA"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CAA"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CGT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CGC","CGA","CGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CGC","CGA","CGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CGC","CGA","CGG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CGC","CGA","CGG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CGC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CGT","CGA","CGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CGT","CGA","CGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CGT","CGA","CGG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CGT","CGA","CGG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CGA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CGT","CGC","CGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CGT","CGC","CGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CGT","CGC","CGG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CGT","CGC","CGG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "CGG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("CGT","CGA","CGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("CGT","CGA","CGC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("CGT","CGA","CGC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("CGT","CGA","CGC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "ATT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("ATC","ATA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("ATC","ATA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("ATC","ATA"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("ATC","ATA"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "ATC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("ATT","ATA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("ATT","ATA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("ATT","ATA"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("ATT","ATA"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "ATA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("ATC","ATT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("ATC","ATT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("ATC","ATT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("ATC","ATT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "ATG"){
-        nb_sm_consensus <- 0
-        nb_nsm_consensus <- as.integer(consensus_codon_seq!=original_codon)
+        nb_synonymous_mutations <- 0
+        nb_non_synonymous_mutations <- length(mutated_codons)
+        nb_ss_consensus <- 0
+        nb_nss_consensus <- as.integer(consensus_codon_seq!=original_codon)
         
       } else if (original_codon == "ACT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("ACC","ACA","ACG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("ACC","ACA","ACG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("ACC","ACA","ACG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("ACC","ACA","ACG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "ACC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("ACT","ACA","ACG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("ACT","ACA","ACG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("ACT","ACA","ACG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("ACT","ACA","ACG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "ACA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("ACT","ACC","ACG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("ACT","ACC","ACG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("ACT","ACC","ACG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("ACT","ACC","ACG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "ACG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("ACT","ACC","ACA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("ACT","ACC","ACA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("ACT","ACC","ACA"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("ACT","ACC","ACA"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "AAT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("AAC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("AAC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("AAC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("AAC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "AAC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("AAT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("AAT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("AAT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("AAT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "AAA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("AAG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("AAG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("AAG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("AAG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "AAG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("AAA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("AAA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("AAA"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("AAA"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "AGT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("AGC","TCT","TCC","TCA","TCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("AGC","TCT","TCC","TCA","TCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("AGC","TCT","TCC","TCA","TCG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("AGC","TCT","TCC","TCA","TCG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "AGC"){
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("AGT","TCT","TCC","TCA","TCG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("AGT","TCT","TCC","TCA","TCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+          nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("AGT","TCT","TCC","TCA","TCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("AGT","TCT","TCC","TCA","TCG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "AGA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("AGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("AGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("AGG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("AGG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "AGG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("AGA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("AGA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("AGA"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("AGA"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GTT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GTC","GTA","GTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GTC","GTA","GTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GTC","GTA","GTG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GTC","GTA","GTG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GTC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GTT","GTA","GTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GTT","GTA","GTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GTT","GTA","GTG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GTT","GTA","GTG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GTA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GTC","GTT","GTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GTC","GTT","GTG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GTC","GTT","GTG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GTC","GTT","GTG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GTG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GTC","GTA","GTT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GTC","GTA","GTT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GTC","GTA","GTT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GTC","GTA","GTT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GCT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GCC","GCA","GCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GCC","GCA","GCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GCC","GCA","GCG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GCC","GCA","GCG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GCC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GCT","GCA","GCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GCT","GCA","GCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GCT","GCA","GCG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GCT","GCA","GCG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GCA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GCC","GCT","GCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GCC","GCT","GCG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GCC","GCT","GCG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GCC","GCT","GCG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GCG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GCC","GCA","GCT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GCC","GCA","GCT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GCC","GCA","GCT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GCC","GCA","GCT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GAT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GAC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GAC"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GAC"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GAC"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GAC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GAT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GAT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GAT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GAT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GAA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GAG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GAG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GAG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GAG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
       } else if (original_codon == "GAG"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GAA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GAA"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GAA"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GAA"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
         
       } else if (original_codon == "GGT"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GGC","GGA","GGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GGC","GGA","GGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GGC","GGA","GGG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GGC","GGA","GGG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
         
       } else if (original_codon == "GGC"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GGT","GGA","GGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GGT","GGA","GGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GGT","GGA","GGG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GGT","GGA","GGG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
         
       } else if (original_codon == "GGA"){
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GGC","GGT","GGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GGC","GGT","GGG"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GGC","GGT","GGG"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GGC","GGT","GGG"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
         
       } else if (original_codon == "GGG"){
-        
+        nb_synonymous_mutations <- sum(as.integer(mutated_codons %in% c("GGC","GGA","GGT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
+        nb_non_synonymous_mutations <- sum(as.integer(!mutated_codons %in% c("GGC","GGA","GGT"))*ifelse(length(sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)))>0,yes = sapply(X = mutated_codons,FUN = function(x) get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = x)),no = 0))
         if(consensus_codon_seq!=original_codon){#if there is a mutation
-          nb_sm_consensus <- as.integer(consensus_codon_seq %in% c("GGC","GGA","GGT"))
-          nb_nsm_consensus <- 1 - nb_sm_consensus
+          nb_ss_consensus <- as.integer(consensus_codon_seq %in% c("GGC","GGA","GGT"))
+          nb_nss_consensus <- 1 - nb_ss_consensus
         }else{
-          nb_sm_consensus <- 0
-          nb_nsm_consensus <- 0
+          nb_ss_consensus <- 0
+          nb_nss_consensus <- 0
         }
         
         
@@ -1576,8 +1834,10 @@ get_synonymity_stats <- function(the_df_cell_content_log, the_gene_ID,generation
       nb_seg_site_current_codon <- get_nb_seg_sites_from_codon_seqs(all_codons)
       nb_segreg_sites <- nb_segreg_sites + nb_seg_site_current_codon
       nb_bp_diffs_current_codon <- get_nb_bp_diffs_consensus_codon_vs_orig(orig_codon = original_codon,consensus_seq = consensus_codon_seq)
-      Nb_syn_mutations <- Nb_syn_mutations + (nb_sm_consensus*nb_bp_diffs_current_codon)
-      Nb_nsyn_mutations <- Nb_nsyn_mutations + (nb_nsm_consensus*nb_bp_diffs_current_codon)
+      Nb_syn_substitutions <- Nb_syn_substitutions + (nb_ss_consensus*nb_bp_diffs_current_codon)
+      Nb_nsyn_substitutions <- Nb_nsyn_substitutions + (nb_nss_consensus*nb_bp_diffs_current_codon)
+      Nb_syn_mutations <- Nb_syn_mutations + nb_synonymous_mutations
+      Nb_nsyn_mutations <- Nb_nsyn_mutations + nb_non_synonymous_mutations
       
     }#end for loop codons
   }
@@ -1612,7 +1872,7 @@ get_synonymity_stats <- function(the_df_cell_content_log, the_gene_ID,generation
   D_Taj_g_during_g <- ((Ne_k_hat_g_during_g - Ne_S_Taj_g_during_g)*(2*mu))/sqrt_expected_variance_current_gene_during_g
   
   #return values of interest
-  return(list(nb_nsm=Nb_nsyn_mutations,nb_sm=Nb_syn_mutations,nb_nss=Nb_nsyn_sites,nb_ss=Nb_syn_sites,nb_segregative_sites=nb_segreg_sites,nb_copy_g_in_G=nb_copy_gene_in_current_gen,nb_alleles_g_in_G= length(unique(df_the_gene_in_cells_at_generation_of_interest$nucl_sequence)),nb_uniq_species_of_g_in_G=nb_uniq_species_of_gene_in_current_gen,a1=a1_g,Ne_k_hat_gene_in_current_g=Ne_k_hat_g_during_g,Ne_S_Taj_gene_in_current_g=Ne_S_Taj_g_during_g,D_Taj_gene_in_current_g=D_Taj_g_during_g,the_cai=avg_cai_current_gene_during_g))
+  return(list(nb_sm=Nb_syn_mutations,nb_nsm=Nb_nsyn_mutations,nb_ns_sub=Nb_nsyn_substitutions,nb_s_sub=Nb_syn_substitutions,nb_nss=Nb_nsyn_sites,nb_ss=Nb_syn_sites,nb_segregative_sites=nb_segreg_sites,nb_copy_g_in_G=nb_copy_gene_in_current_gen,nb_alleles_g_in_G= length(unique(df_the_gene_in_cells_at_generation_of_interest$nucl_sequence)),nb_uniq_species_of_g_in_G=nb_uniq_species_of_gene_in_current_gen,a1=a1_g,Ne_k_hat_gene_in_current_g=Ne_k_hat_g_during_g,Ne_S_Taj_gene_in_current_g=Ne_S_Taj_g_during_g,D_Taj_gene_in_current_g=D_Taj_g_during_g,the_cai=avg_cai_current_gene_during_g))
 }
 
 
@@ -1627,8 +1887,8 @@ df_pangenome_evol_sim <- read.csv(file = paste0(sim_output_workpace,simulation_n
 df_pangenome_evol_sim$cell_ID <- as.character(df_pangenome_evol_sim$cell_ID)
 df_pangenome_evol_sim <- subset(x = df_pangenome_evol_sim, subset= fitness!=0) #remove dead cells
 simulation_time <- max(df_pangenome_evol_sim$Generation_ctr,na.rm=TRUE)
-max_genome_size <- max(df_pangenome_evol_sim$x,na.rm=TRUE)
-min_genome_size <- min(df_pangenome_evol_sim$x,na.rm=TRUE)
+max_genome_size <- max(df_pangenome_evol_sim$x,na.rm=TRUE)+20 # add 20 for display purpose
+min_genome_size <- min(df_pangenome_evol_sim$x,na.rm=TRUE)-20 *as.integer(min(df_pangenome_evol_sim$x,na.rm=TRUE)>=0) # substract 20 for display purpose
 nb_species_simulated <- length(unique(x = na.omit(df_pangenome_evol_sim$cell_ID)))
 ggplot(data=df_pangenome_evol_sim,aes(x = x,colour = cell_ID,fill=cell_ID)) + geom_density(alpha=0.1) + ggtitle(paste0("Distribution of species genome size for simulation ",simulation_name),subtitle = paste0(" (",simulation_time," generations; ",nb_species_simulated," species; N = ",nb_cells_simulated," cells; xi = ",average_nb_genes_per_genomes_at_start,"; x0 = ",wanted_x_0_at_equilibrium,")")) + xlab("Genome size") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=12)) + scale_x_continuous(limits =c(min_genome_size,max_genome_size),breaks = seq(from = min_genome_size,to = max_genome_size,by = round((max_genome_size-min_genome_size)/10))) 
 ggsave(filename = "Genome_size_distribution.png", path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
@@ -1648,9 +1908,8 @@ ggsave(filename = "Fitness_VS_x.png", path=save_plots_workspace_current_sim, wid
 if (as.integer(num_fitness_landscape) == 9){
   #Plot the expected curve of Alpha_x and Beta_x in function of x (i.e. number of genes) with Koonin's model equations and the parameters I used for the type1 and type3 simulations
   expected_intercept_current_sim <- curve_intersect(curve1 = function(x) sPrime*(x^lambdaPlus),curve2 = function(x) rPrime*(x^lambdaMinus) , empirical = FALSE, domain = c(min(c(round(wanted_x_0_at_equilibrium/1.25),round(average_nb_genes_per_genomes_at_start/1.25)),na.rm = TRUE),max(c(round(wanted_x_0_at_equilibrium*1.25),round(average_nb_genes_per_genomes_at_start*1.25)),na.rm = TRUE)))
-  ggplot(data.frame(x=seq(from = min(c(round(wanted_x_0_at_equilibrium/1.25),round(average_nb_genes_per_genomes_at_start/1.25)),na.rm = TRUE), to = max(c(round(wanted_x_0_at_equilibrium*1.25),round(average_nb_genes_per_genomes_at_start*1.25)),na.rm = TRUE),by = round((max_genome_size-min_genome_size)/10))), aes(x)) + stat_function(fun=function(x) sPrime*(x^lambdaPlus),col="blue") + stat_function(fun=function(x) rPrime*(x^lambdaMinus),col="red") + scale_x_continuous(limits =c(min(c(round(wanted_x_0_at_equilibrium/1.25),round(average_nb_genes_per_genomes_at_start/1.25)),na.rm = TRUE),max(c(round(wanted_x_0_at_equilibrium*1.25),round(average_nb_genes_per_genomes_at_start*1.25)),na.rm = TRUE)),breaks = seq(from = min(c(round(wanted_x_0_at_equilibrium/1.25),round(average_nb_genes_per_genomes_at_start/1.25)),na.rm = TRUE),to = max(c(round(wanted_x_0_at_equilibrium*1.25),round(average_nb_genes_per_genomes_at_start*1.25)),na.rm = TRUE),by = round((max_genome_size-min_genome_size)/10))) + geom_vline(xintercept = expected_intercept_current_sim$x, color = "grey",lty=2) + ggtitle(paste0("Koonin model expected loss rate (red) and gain rate (blue) during simulations; Equilibrium at x = ",expected_intercept_current_sim$x))
+  ggplot(data.frame(x=seq(from = min(c(round(wanted_x_0_at_equilibrium/1.25),round(average_nb_genes_per_genomes_at_start/1.25)),na.rm = TRUE), to = max(c(round(wanted_x_0_at_equilibrium*1.25),round(average_nb_genes_per_genomes_at_start*1.25)),na.rm = TRUE),by = round((max(c(round(wanted_x_0_at_equilibrium*1.25),round(average_nb_genes_per_genomes_at_start*1.25)))-min(c(round(wanted_x_0_at_equilibrium/1.25),round(average_nb_genes_per_genomes_at_start/1.25))))/10))), aes(x)) + stat_function(fun=function(x) sPrime*(x^lambdaPlus),col="blue") + stat_function(fun=function(x) rPrime*(x^lambdaMinus),col="red") + scale_x_continuous(limits =c(min(c(round(wanted_x_0_at_equilibrium/1.25),round(average_nb_genes_per_genomes_at_start/1.25)),na.rm = TRUE),max(c(round(wanted_x_0_at_equilibrium*1.25),round(average_nb_genes_per_genomes_at_start*1.25)),na.rm = TRUE)),breaks = seq(from = min(c(round(wanted_x_0_at_equilibrium/1.25),round(average_nb_genes_per_genomes_at_start/1.25)),na.rm = TRUE),to = max(c(round(wanted_x_0_at_equilibrium*1.25),round(average_nb_genes_per_genomes_at_start*1.25)),na.rm = TRUE),by = round((max(c(round(wanted_x_0_at_equilibrium*1.25),round(average_nb_genes_per_genomes_at_start*1.25)))-min(c(round(wanted_x_0_at_equilibrium/1.25),round(average_nb_genes_per_genomes_at_start/1.25))))/10) )) + geom_vline(xintercept = expected_intercept_current_sim$x, color = "grey",lty=2) + ggtitle(paste0("Koonin model expected loss rate (red) and\n gain rate (blue) during simulations\n; Equilibrium at x = ",expected_intercept_current_sim$x))
   ggsave(filename = paste0("Expected_loss_and_gain_rate_sim_",simulation_name,".png"), path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
-  
 }
 
 #For Genome size (x), r_x, Beta_x, Alpha_x and fitness calculate POPULATIONS min, mean and max
@@ -1847,7 +2106,7 @@ if (as.integer(num_fitness_landscape) != 7){
   df_cell_gene_content_current_sim <- read.csv(file = paste0(sim_output_workpace,simulation_name,"/CELL_GENE_CONTENT_LOG.txt"),header = TRUE,sep = "\t",stringsAsFactors = FALSE)
   v_generations <- c(1,seq(from=dt,to = simulation_time,by=dt))
   v_unique_gene_IDs_current_sim <- sort(unique(df_cell_gene_content_current_sim$gene_ID))
-  df_results_variants_analysis_current_sim <- data.frame(gene_ID=rep(v_unique_gene_IDs_current_sim,length(v_generations)),Generation_ctr=rep(x = v_generations,each=length(v_unique_gene_IDs_current_sim)),nb_nss=0,nb_ss=0,nb_nsm=0,nb_sm=0,dn=NA,ds=NA,dnds=NA,avg_cai=NA,nb_seg_sites=0,nb_copy_gene=0,nb_uniq_species_of_gene=0,a1=NA,Ne_S_Taj=0,Ne_k_hat=0,D_Taj=NA,stringsAsFactors = FALSE)
+  df_results_variants_analysis_current_sim <- data.frame(gene_ID=rep(v_unique_gene_IDs_current_sim,length(v_generations)),Generation_ctr=rep(x = v_generations,each=length(v_unique_gene_IDs_current_sim)),nb_nss=0,nb_ss=0,nb_nsm=0,nb_sm=0,nb_ns_sub=0,nb_s_sub=0,dn=NA,ds=NA,dnds=NA,pn=NA,ps=NA, pnps=NA,avg_cai=NA,nb_seg_sites=0,nb_copy_gene=0,nb_uniq_species_of_gene=0,a1=NA,Ne_S_Taj=0,Ne_k_hat=0,D_Taj=NA,stringsAsFactors = FALSE)
   #Only calculate variant analysis results for few time points
   df_results_variants_analysis_current_sim <- subset(x = df_results_variants_analysis_current_sim,subset = Generation_ctr %in% c(1,seq(from=(dt),to = simulation_time,by=(dt))))
   #number of cpus for variant analysis. Let at least 1 cpus free
@@ -1864,9 +2123,17 @@ if (as.integer(num_fitness_landscape) != 7){
     system(paste0("touch ",save_plots_workspace_current_sim,"/LOGFILE_VARIANT_ANALYSIS_sim_",simulation_name,"_process",Sys.getpid(),".txt"))
     for (p_row_ind in p_row_ind_begin:p_row_ind_end){
       synonymity_infos <- get_synonymity_stats(the_df_cell_content_log = df_cell_gene_content_current_sim,the_gene_ID = df_results_variants_analysis_current_sim$gene_ID[p_row_ind],generation_of_interest = df_results_variants_analysis_current_sim$Generation_ctr[p_row_ind])
+      if ((is.na(synonymity_infos$Ne_S_Taj_gene_in_current_g))|(synonymity_infos$Ne_S_Taj_gene_in_current_g == 0)){
+        next #no sequence variants so skip
+      }
+
       nb_copy_and_a1_infos <- list(nb_copy_g_in_G=synonymity_infos$nb_copy_g_in_G,a1=synonymity_infos$a1)
       nb_uniq_species_of_current_g_in_current_g = synonymity_infos$nb_uniq_species_of_g_in_G
       #extract all the infos/variables from the two previous lists AND ASSIGN VARIABLES VALUES FOR THE ROW at p_row_ind  
+      nb_ns_sub_current_g_during_g <- synonymity_infos$nb_ns_sub
+      df_results_variants_analysis_current_sim$nb_ns_sub[p_row_ind] <- nb_ns_sub_current_g_during_g
+      nb_s_sub_current_g_during_g <- synonymity_infos$nb_s_sub
+      df_results_variants_analysis_current_sim$nb_s_sub[p_row_ind] <- nb_s_sub_current_g_during_g
       nb_nsm_current_g_during_g <- synonymity_infos$nb_nsm
       df_results_variants_analysis_current_sim$nb_nsm[p_row_ind] <- nb_nsm_current_g_during_g
       nb_sm_current_g_during_g <- synonymity_infos$nb_sm
@@ -1875,15 +2142,23 @@ if (as.integer(num_fitness_landscape) != 7){
       df_results_variants_analysis_current_sim$nb_nss[p_row_ind] <- nb_nss_current_g_during_g
       nb_ss_current_g_during_g <- synonymity_infos$nb_ss
       df_results_variants_analysis_current_sim$nb_ss[p_row_ind] <- nb_ss_current_g_during_g
-      dn_current_g_during_g <- nb_nsm_current_g_during_g/nb_nss_current_g_during_g
+      dn_current_g_during_g <- nb_ns_sub_current_g_during_g/nb_nss_current_g_during_g
       df_results_variants_analysis_current_sim$dn[p_row_ind] <- dn_current_g_during_g
-      ds_current_g_during_g <- nb_sm_current_g_during_g/nb_ss_current_g_during_g
+      ds_current_g_during_g <- nb_s_sub_current_g_during_g/nb_ss_current_g_during_g
       df_results_variants_analysis_current_sim$ds[p_row_ind] <- ds_current_g_during_g
+      pn_current_g_during_g <- nb_nsm_current_g_during_g/nb_nss_current_g_during_g
+      df_results_variants_analysis_current_sim$pn[p_row_ind] <- pn_current_g_during_g
+      ps_current_g_during_g <- nb_sm_current_g_during_g/nb_ss_current_g_during_g
+      df_results_variants_analysis_current_sim$ps[p_row_ind] <- ps_current_g_during_g
       mean_cai_current_g_during_g <- synonymity_infos$the_cai
       df_results_variants_analysis_current_sim$avg_cai[p_row_ind] <- mean_cai_current_g_during_g
       
-      if ((!is.na(nb_sm_current_g_during_g))&(nb_sm_current_g_during_g>0)){
+      if ((!is.na(nb_s_sub_current_g_during_g))&(nb_s_sub_current_g_during_g>0)){
         df_results_variants_analysis_current_sim$dnds[p_row_ind] <- df_results_variants_analysis_current_sim$dn[p_row_ind]/df_results_variants_analysis_current_sim$ds[p_row_ind]
+      }
+      
+      if ((!is.na(nb_sm_current_g_during_g))&(nb_sm_current_g_during_g>0)){
+        df_results_variants_analysis_current_sim$pnps[p_row_ind] <- df_results_variants_analysis_current_sim$pn[p_row_ind]/df_results_variants_analysis_current_sim$ps[p_row_ind]
       }
       
       nb_seg_sites_current_g_during_g <- synonymity_infos$nb_segregative_sites
@@ -1897,11 +2172,12 @@ if (as.integer(num_fitness_landscape) != 7){
       df_results_variants_analysis_current_sim$Ne_S_Taj[p_row_ind] <- Ne_S_Taj_current_g_during_g
       df_results_variants_analysis_current_sim$Ne_k_hat[p_row_ind] <- synonymity_infos$Ne_k_hat_gene_in_current_g
       df_results_variants_analysis_current_sim$D_Taj[p_row_ind] <- synonymity_infos$D_Taj_gene_in_current_g
-      msg_surrent_state<- (paste0(floor(x = ((p_row_ind-p_row_ind_begin)*100/(p_row_ind_end-p_row_ind_begin+1))),"% of the variants analysis has been done for simulation_",simulation_name," for process ",Sys.getpid()," !"))
-      system(paste0("echo ",msg_surrent_state," >> ",save_plots_workspace_current_sim,"/LOGFILE_VARIANT_ANALYSIS_sim_",simulation_name,"_process",Sys.getpid(),".txt"))
+      msg_current_state<- (paste0(floor(x = ((p_row_ind-p_row_ind_begin)*100/(p_row_ind_end-p_row_ind_begin+1))),"% of the variants analysis has been done for simulation_",simulation_name," for process ",Sys.getpid()," !"))
+      system(paste0("echo ",msg_current_state," >> ",save_plots_workspace_current_sim,"/LOGFILE_VARIANT_ANALYSIS_sim_",simulation_name,"_process",Sys.getpid(),".txt"))
       
     }
-    return(df_results_variants_analysis_current_sim[p_row_ind_begin:p_row_ind_end,])
+    df_variant_res_out <- subset(x=df_results_variants_analysis_current_sim[p_row_ind_begin:p_row_ind_end,],subset =  df_results_variants_analysis_current_sim[p_row_ind_begin:p_row_ind_end,]$Ne_S_Taj > 0) #only return time points with sequence variants for genes 
+    return(df_variant_res_out)
   }
   
   v_row_ind_begin <- seq(from=1,to=nrow(df_results_variants_analysis_current_sim),by=nrow(df_results_variants_analysis_current_sim)/nb_cores_variant_analysis)
@@ -1909,12 +2185,17 @@ if (as.integer(num_fitness_landscape) != 7){
   df_results_variants_analysis_current_sim <- foreach(the_p_row_ind_begin = v_row_ind_begin,the_p_row_ind_end = v_row_ind_end, .combine = rbind,.export=c("df_cell_gene_content_current_sim","df_results_variants_analysis_current_sim"),.packages=c("ggplot2","nlme","session","doBy","reconPlots","gridExtra"))  %dopar%  main_loop_variants_analysis(p_row_ind_begin = the_p_row_ind_begin,p_row_ind_end = the_p_row_ind_end)
   
   stopCluster(cl)
+
+  #save the result matrix of the CURRENT SIMULATION
+  mtx_results_current_sim <- as.matrix(df_results_variants_analysis_current_sim)
+  write.table(mtx_results_current_sim, file = paste0(save_plots_workspace_current_sim,"/mtx_variants_analysis_results_simulation_",simulation_name,".csv"),row.names=TRUE, na="NA",col.names=TRUE, sep="\t")
+
   #Plots :
   
   #Get gene variants information for the maximal generation at which we have gene sequence variants
-  df_results_sim_at_max_generation_during_which_variants_exist <- subset(x = df_results_variants_analysis_current_sim,subset = Generation_ctr==max(subset(x=df_results_variants_analysis_current_sim,subset=((!is.na(nb_sm)) & (nb_sm!=0)))$Generation_ctr,na.rm=TRUE))
+  df_results_sim_at_max_generation_during_which_variants_exist <- subset(x = df_results_variants_analysis_current_sim,subset = Generation_ctr==max(subset(x=df_results_variants_analysis_current_sim,subset=((!is.na(nb_s_sub)) & (nb_s_sub!=0)))$Generation_ctr,na.rm=TRUE))
   
-  nb_genes_variant <- nrow(subset(x = df_results_sim_at_max_generation_during_which_variants_exist,subset=((!is.na(nb_sm)) & (nb_sm!=0))))
+  nb_genes_variant <- nrow(subset(x = df_results_sim_at_max_generation_during_which_variants_exist,subset=((!is.na(nb_s_sub)) & (nb_s_sub!=0))))
   nb_genes_variant
   if (nb_genes_variant > 1){
     #dn/ds distribution AT GENERATION == maximum of Generation during which gene variants exist
@@ -1924,6 +2205,14 @@ if (as.integer(num_fitness_landscape) != 7){
     #log10(dn/ds) distribution AT GENERATION == maximum of Generation during which gene variants exist
     ggplot(data=df_results_sim_at_max_generation_during_which_variants_exist,aes(x = log10(dnds+(1E-16)),colour = "red",fill="red")) + geom_density(alpha=0.1) + ggtitle(paste0("Distribution of genes log10(dN/dS) at the end of simulation_",simulation_name),subtitle = paste0(" (Simulation duration = ",simulation_time," generations; ",nb_species_simulated," species; N = ",nb_cells_simulated," cells; ",average_nb_genes_per_genomes_at_start," genes per cell in average at the start of the simulation)")) + xlab("log10(dN/dS)") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=12)) #+ scale_x_continuous(limits =c(,),breaks = seq(from = ,to = ,by = )) 
     ggsave(filename = "log10_dnds_distribution_AT_THE_END_OF_SIMULATION.png", path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
+    
+    #pn/ps distribution AT GENERATION == maximum of Generation during which gene variants exist
+    ggplot(data=df_results_sim_at_max_generation_during_which_variants_exist,aes(x = pnps,colour = "red",fill="red")) + geom_density(alpha=0.1) + ggtitle(paste0("Distribution of genes pN/pS at the end of simulation_",simulation_name),subtitle = paste0(" (Simulation duration = ",simulation_time," generations; ",nb_species_simulated," species; N = ",nb_cells_simulated," cells; ",average_nb_genes_per_genomes_at_start," genes per cell in average at the start of the simulation)")) + xlab("pN/pS") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=12)) #+ scale_x_continuous(limits =c(,),breaks = seq(from = ,to = ,by = )) 
+    ggsave(filename = "pnps_distribution_AT_THE_END_OF_SIMULATION.png", path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
+    
+    #log10(pn/ps) distribution AT GENERATION == maximum of Generation during which gene variants exist
+    ggplot(data=df_results_sim_at_max_generation_during_which_variants_exist,aes(x = log10(pnps+(1E-16)),colour = "red",fill="red")) + geom_density(alpha=0.1) + ggtitle(paste0("Distribution of genes log10(pN/pS) at the end of simulation_",simulation_name),subtitle = paste0(" (Simulation duration = ",simulation_time," generations; ",nb_species_simulated," species; N = ",nb_cells_simulated," cells; ",average_nb_genes_per_genomes_at_start," genes per cell in average at the start of the simulation)")) + xlab("log10(pN/pS)") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=12)) #+ scale_x_continuous(limits =c(,),breaks = seq(from = ,to = ,by = )) 
+    ggsave(filename = "log10_pnps_distribution_AT_THE_END_OF_SIMULATION.png", path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
     
     #Ne_S_Taj distribution AT GENERATION == maximum of Generation during which gene variants exist
     ggplot(data=df_results_sim_at_max_generation_during_which_variants_exist,aes(x = Ne_S_Taj,colour = "blue",fill="blue")) + geom_density(alpha=0.1) + ggtitle(paste0("Distribution of genes Ne_S_Taj at the end of simulation_",simulation_name),subtitle = paste0(" (Simulation duration = ",simulation_time," generations; ",nb_species_simulated," species; N = ",nb_cells_simulated," cells; ",average_nb_genes_per_genomes_at_start," genes per cell in average at the start of the simulation)")) + xlab("Ne_S_Taj") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=12)) #+ scale_x_continuous(limits =c(,),breaks = seq(from = ,to = ,by = )) 
@@ -1946,23 +2235,45 @@ if (as.integer(num_fitness_landscape) != 7){
     ggsave(filename = "D_Taj_distribution_AT_THE_END_OF_SIMULATION.png", path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
     
   }
+  #Gene mobility distributions (1 gene multiple time points AND multiple genes 1 time point) ***NEED AT LEAST 5 TIME POINTS!!!
+  #1 gene multiple time points
+  tryCatch(expr ={
+    ggplot(data=subset(df_results_variants_analysis_current_sim,gene_ID==names(sort(table(gene_ID),decreasing = TRUE))[sample(1:3,1)])) + geom_density(mapping = aes(x = nb_uniq_species_of_gene)) + xlab("Gene mobility") + ylab("Density")
+    ggsave(filename = "Gene_Mobility_distribution_1_gene_multiple_time_points.png", path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
+  },error=function(e) print(paste0("Gene Mobility distribution are plotted when there is at least 5 time points saved from simulation <- ",e)))
+  
+  
+  #multiple genes 1 time point
+  tryCatch(expr ={
+    ggplot(data=subset(df_results_variants_analysis_current_sim,Generation_ctr==(sort(unique(Generation_ctr),decreasing = TRUE)[sample(1:3,1)]))) + geom_density(mapping = aes(x = nb_uniq_species_of_gene)) + xlab("Gene mobility") + ylab("Density")
+    ggsave(filename = "Gene_Mobility_distribution_Multiple_genes_1_time_point.png", path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
+  },error=function(e) print(paste0("Gene Mobility distribution are plotted when there is at least 5 time points saved from simulation <- ",e)))
+  
+  
+  
   ##########
   #initialization
+  v_unique_gene_IDs_current_sim <- sort(unique(subset(x = df_results_variants_analysis_current_sim,subset = nb_uniq_species_of_gene>1)$gene_ID))#redefine v_unique_gene_IDs_current_sim as the list of mobile genes 
+  
+  Slope_lm_CAI_vs_ps <- rep(NA,length(v_unique_gene_IDs_current_sim))
   Slope_lm_Ne_k_hat_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
   Slope_lm_Ne_S_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
   Slope_lm_D_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  pvalue_lm_CAI_vs_ps <- rep(NA,length(v_unique_gene_IDs_current_sim))
   pvalue_lm_Ne_k_hat_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
   pvalue_lm_Ne_S_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
   pvalue_lm_D_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  adj_r_square_lm_CAI_vs_ps <- rep(NA,length(v_unique_gene_IDs_current_sim))
   adj_r_square_lm_Ne_k_hat_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
   adj_r_square_lm_Ne_S_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
   adj_r_square_lm_D_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
-  p_val_threshold <- 0.05/length(v_unique_gene_IDs_current_sim)
+  p_val_threshold <- 100# 0.05 #/length(v_unique_gene_IDs_current_sim) #No Bonferroni because p-value are adjusted to become FDR
   #####DON't FORGET that variable "save_plots_workspace_current_sim" does not have "/" at the end
   for (v_g_ind in 1:length(v_unique_gene_IDs_current_sim)){
     list_results_current_lm_Ne_k_hat_vs_Gene_Mobility <- list(adj_r_sq_current_lm = NA,slope_current_lm = NA,p_val_current_lm=NA)
     list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility <- list(adj_r_sq_current_lm = NA,slope_current_lm = NA,p_val_current_lm=NA)
     list_results_current_lm_D_Taj_vs_Gene_Mobility <- list(adj_r_sq_current_lm = NA,slope_current_lm = NA,p_val_current_lm=NA)
+    list_results_current_lm_CAI_vs_ps <- list(adj_r_sq_current_lm = NA,slope_current_lm = NA,p_val_current_lm=NA)
     
     save_plots_workspace_current_gene <- paste0(save_plots_workspace_current_sim,"/gene_",v_unique_gene_IDs_current_sim[v_g_ind])
     system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("rm -rf ",save_plots_workspace_current_gene,"/"),intern = FALSE,wait = TRUE)
@@ -1995,13 +2306,7 @@ if (as.integer(num_fitness_landscape) != 7){
       axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
       dev.off()
     }    
-    if (length(na.omit(df_current_gene_in_time$avg_cai))>=1){
-      #avg_cai in function of Generation plot
-      png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_avg_cai_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
-      plot(df_current_gene_in_time$avg_cai~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene average CAI",col="red",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$avg_cai,na.rm = TRUE),max(df_current_gene_in_time$avg_cai,na.rm=TRUE)))
-      axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
-      dev.off()
-    }
+    
     if (length(na.omit(df_current_gene_in_time$ds))>=1){
       #ds in function of Generation plot
       png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_ds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
@@ -2016,14 +2321,27 @@ if (as.integer(num_fitness_landscape) != 7){
       if (length(intersect(which(is.finite(df_current_gene_in_time$dn)),which(is.finite(df_current_gene_in_time$ds))))>=2){
         #dn vs ds 
         v_pos_for_current_reg <-intersect(which(is.finite(df_current_gene_in_time$dn)),which(is.finite(df_current_gene_in_time$ds)))
-        tryCatch(expr = ggplotRegression(fit=lmp(dn ~ ds, data = df_current_gene_in_time[v_pos_for_current_reg,],na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("dn_vs_ds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "ds",ylabl = "dn"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+        tryCatch(expr = ggplotRegression(fit=lmp(dn ~ ds, data = df_current_gene_in_time[v_pos_for_current_reg,],na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("dn_vs_ds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "ds",ylabl = "dn"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
       
       }
-      if (length(intersect(which(is.finite(df_current_gene_in_time$avg_cai)),which(is.finite(df_current_gene_in_time$ds))))>=2){
-        #average_cai vs ds 
-        v_pos_for_current_reg <-intersect(which(is.finite(df_current_gene_in_time$avg_cai)),which(is.finite(df_current_gene_in_time$ds)))
-        tryCatch(expr = ggplotRegression(fit=lmp(avg_cai ~ ds, data = df_current_gene_in_time[v_pos_for_current_reg,],na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("avg_cai_vs_ds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "ds",ylabl = "average CAI"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
-      
+    }
+    
+    if (length(na.omit(df_current_gene_in_time$ps))>=1){
+      #ps in function of Generation plot
+      png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_ps_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
+      plot(df_current_gene_in_time$ps~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene ps",col="red",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$ps,na.rm = TRUE),max(df_current_gene_in_time$ps,na.rm=TRUE)))
+      axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
+      dev.off()
+      #log10(ps) in function of Generation plot
+      png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_log10_ps_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
+      plot(log10(df_current_gene_in_time$ps+(1E-16))~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene log10(ps)",col="red",xlim=c(1,simulation_time+1),ylim=c(min(log10(df_current_gene_in_time$ps+(1E-16)),na.rm = TRUE),max(log10(df_current_gene_in_time$ps+(1E-16)),na.rm=TRUE)))
+      axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
+      dev.off()
+      if (length(intersect(which(is.finite(df_current_gene_in_time$pn)),which(is.finite(df_current_gene_in_time$ps))))>=2){
+        #pn vs ps 
+        v_pos_for_current_reg <-intersect(which(is.finite(df_current_gene_in_time$pn)),which(is.finite(df_current_gene_in_time$ps)))
+        tryCatch(expr = ggplotRegression(fit=lmp(pn ~ ps, data = df_current_gene_in_time[v_pos_for_current_reg,],na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("pn_vs_ps_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "ps",ylabl = "pn"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+        
       }
     }
 
@@ -2070,47 +2388,76 @@ if (as.integer(num_fitness_landscape) != 7){
         png(filename = paste0(save_plots_workspace_current_gene,"/dnds_Tajima_D_and_Gene_Mobility_combined_time_series_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
         par(mfrow=c(3,1)) 
         plot(df_current_gene_in_time$dnds~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene dN/dS",col="blue",xlim=c(1,simulation_time+1),ylim=c(0,10))
-        axis(side=1, c(1,seq(from=(dt),to = simulation_time,by=(simulation_time/dt))),las=2)
+        axis(side=1, seq(from=1,to = simulation_time,by=round(simulation_time/10)),las=2)
         plot(df_current_gene_in_time$D_Taj~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene Tajima's D",col="red",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$D_Taj,na.rm = TRUE),max(df_current_gene_in_time$D_Taj,na.rm=TRUE)))
-        axis(side=1, at=c(1,seq(from=(dt),to = simulation_time,by=(simulation_time/dt))),las=2)
+        axis(side=1, at=seq(from=1,to = simulation_time,by=round(simulation_time/10)),las=2)
         plot(df_current_gene_in_time$nb_uniq_species_of_gene~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene Mobility",col="green",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$nb_uniq_species_of_gene,na.rm = TRUE),max(df_current_gene_in_time$nb_uniq_species_of_gene,na.rm=TRUE)))
-        axis(side=1, at=c(1,seq(from=(dt),to = simulation_time,by=(simulation_time/dt))),las=2)
+        axis(side=1, at=seq(from=1,to = simulation_time,by=round(simulation_time/10)),las=2)
         dev.off()
         
         png(filename = paste0(save_plots_workspace_current_gene,"/Gene_Mobility_and_number_of_gene_copies_time_series_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 800, height = 600, units = "px")
         par(mfrow=c(2,1))
         plot(df_current_gene_in_time$nb_uniq_species_of_gene~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene mobility",col="blue",xlim=c(1,simulation_time+1),ylim=c(0,nb_species_simulated))
-        axis(side=1, c(1,seq(from=(dt),to = simulation_time,by=(simulation_time/dt))),las=2)
+        axis(side=1, seq(from=1,to = simulation_time,by=round(simulation_time/10)),las=2)
         plot(df_current_gene_in_time$nb_copy_gene~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Number of gene copy",col="blue",xlim=c(1,simulation_time+1),ylim=c(0,max(df_current_gene_in_time$nb_copy_gene,na.rm=TRUE)))
-        axis(side=1, c(1,seq(from=(dt),to = simulation_time,by=(simulation_time/dt))),las=2)
+        axis(side=1, seq(from=1,to = simulation_time,by=round(simulation_time/10)),las=2)
         dev.off()
 
         par(mfrow=c(1,1))
         
         #Do gene mobility analysis only if gene is mobile!
-        system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("grep -ci mobile ",sodapop_workspace,"files/genes/",v_unique_gene_IDs_current_sim[v_g_ind],".gene > ", results_output_workspace,"count_mobile.csv"),intern = FALSE,wait = TRUE)
-        is_mobile_current_gene <- as.integer(read.csv(file = paste0(results_output_workspace,"count_mobile.csv"),header = FALSE,sep = "\t",stringsAsFactors = FALSE)$V1[1])>0
-        system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("rm -f ", results_output_workspace,"count_mobile.csv"),intern = FALSE,wait = TRUE)
+        # system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("grep -ci mobile ",sodapop_workspace,"files/genes/",v_unique_gene_IDs_current_sim[v_g_ind],".gene > ", results_output_workspace,"count_mobile.csv"),intern = FALSE,wait = TRUE)
+        # is_mobile_current_gene <- as.integer(read.csv(file = paste0(results_output_workspace,"count_mobile.csv"),header = FALSE,sep = "\t",stringsAsFactors = FALSE)$V1[1])>0
+        # system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("rm -f ", results_output_workspace,"count_mobile.csv"),intern = FALSE,wait = TRUE)
+        is_mobile_current_gene <- (max(df_current_gene_in_time$nb_uniq_species_of_gene,na.rm = TRUE) > 1)
         if (!is_mobile_current_gene){
             next 
         }
         
-        #Ne_k_hat vs Gene_Mobility (STANDARDIZED)
-        current_y <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$Ne_k_hat)
-        current_x <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_uniq_species_of_gene)
-        v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
+        if (length(na.omit(df_current_gene_in_time$avg_cai))>=1){
+            #avg_cai in function of Generation plot
+            png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_avg_cai_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
+            plot(df_current_gene_in_time$avg_cai~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene average CAI",col="red",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$avg_cai,na.rm = TRUE),max(df_current_gene_in_time$avg_cai,na.rm=TRUE)))
+            axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
+          dev.off()
+        }
 
+        if (length(intersect(which(is.finite(df_current_gene_in_time$avg_cai)),which(is.finite(df_current_gene_in_time$ps))))>=2){
+            #average_cai vs ps 
+            v_pos_for_current_reg <-intersect(which(is.finite(df_current_gene_in_time$avg_cai)),which(is.finite(df_current_gene_in_time$ps)))
+            tryCatch(expr = ggplotRegression(fit=lmp(avg_cai ~ ps, data = df_current_gene_in_time[v_pos_for_current_reg,],na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("avg_cai_vs_ps_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "ps",ylabl = "average CAI"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+            tryCatch(expr ={list_results_current_lm_CAI_vs_ps=ggplotRegression(fit=lmp(avg_cai ~ ps, data = df_current_gene_in_time[v_pos_for_current_reg,],na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("avg_CAI_vs_ps_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "ps",ylabl = "average CAI")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+        }
+
+        if (length(intersect(which(is.finite(df_current_gene_in_time$avg_cai)),which(is.finite(df_current_gene_in_time$ds))))>=2){
+            #average_cai vs ds 
+            v_pos_for_current_reg <-intersect(which(is.finite(df_current_gene_in_time$avg_cai)),which(is.finite(df_current_gene_in_time$ds)))
+            tryCatch(expr = ggplotRegression(fit=lmp(avg_cai ~ ds, data = df_current_gene_in_time[v_pos_for_current_reg,],na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("avg_cai_vs_ds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "ds",ylabl = "average CAI"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+      
+        }
+
+        #log10(Ne_k_hat+(1e-16)) vs log10(Gene_Mobility+(1e-16)) 
+        current_y <- log10(df_current_gene_in_time$Ne_k_hat+(1e-16))#scale(center=TRUE,scale=TRUE,df_current_gene_in_time$Ne_k_hat)
+        current_x <- log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1e-16)) #scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_uniq_species_of_gene)
+        v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
+        df_current_plot <- df_current_gene_in_time[v_pos_for_current_reg,]
+        df_current_plot$Ne_k_hat <- log10(df_current_plot$Ne_k_hat+(1e-16)) 
+        df_current_plot$nb_uniq_species_of_gene <- log10(df_current_plot$nb_uniq_species_of_gene+(1e-16))
+        
         if (length(intersect(which(is.finite(df_current_gene_in_time$Ne_k_hat)),which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene))))>=2){
-            tryCatch(expr ={list_results_current_lm_Ne_k_hat_vs_Gene_Mobility=ggplotRegression(fit=lmp(Ne_k_hat ~ nb_uniq_species_of_gene, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Ne_k_hat_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized Gene_Mobility",ylabl = "standardized Ne_k_hat")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+            tryCatch(expr ={list_results_current_lm_Ne_k_hat_vs_Gene_Mobility=ggplotRegression(fit=lmp(Ne_k_hat ~ nb_uniq_species_of_gene, data = df_current_plot,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("Ne_k_hat_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_k_hat+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         }
         
-        #Ne_S_Taj vs Gene_Mobility (STANDARDIZED)
-        current_y <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$Ne_S_Taj)
-        current_x <-scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_uniq_species_of_gene)
+        #log10(Ne_S_Taj+(1e-16)) vs log10(Gene_Mobility+(1e-16)) 
+        current_y <- log10(df_current_gene_in_time$Ne_S_Taj+(1e-16))#scale(center=TRUE,scale=TRUE,df_current_gene_in_time$Ne_k_hat)
+        current_x <- log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1e-16)) #scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_uniq_species_of_gene)
         v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
-
+        df_current_plot <- df_current_gene_in_time[v_pos_for_current_reg,]
+        df_current_plot$Ne_S_Taj <- log10(df_current_plot$Ne_S_Taj+(1e-16)) 
+        df_current_plot$nb_uniq_species_of_gene <- log10(df_current_plot$nb_uniq_species_of_gene+(1e-16))
+        
         if (length(intersect(which(is.finite(df_current_gene_in_time$Ne_S_Taj)),which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene))))>=2){
-            tryCatch(expr ={list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility=ggplotRegression(fit=lmp(Ne_S_Taj ~ nb_uniq_species_of_gene, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Ne_S_Taj_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized Gene_Mobility",ylabl = "standardized Ne_S_Taj")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+            tryCatch(expr ={list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility=ggplotRegression(fit=lmp(Ne_S_Taj ~ nb_uniq_species_of_gene, data = df_current_plot,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("Ne_S_Taj_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_S_Taj+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         }
 
         #log(nb_copy_gene + (1E-16)) vs Gene_Mobility 
@@ -2121,7 +2468,7 @@ if (as.integer(num_fitness_landscape) != 7){
         current_df_plot <- as.data.frame((df_current_gene_in_time)[v_pos_for_current_reg,])
 
         if (length(intersect(which(is.finite(current_y)),which(is.finite(current_x))))>=2){
-            tryCatch(expr ={ggplotRegression(fit=lm(ln_nb_copy_gene ~ nb_uniq_species_of_gene, data = current_df_plot, na.action=na.omit), ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("log_nb_copy_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "Gene_Mobility",ylabl = "ln(nb_copy_gene)")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+            tryCatch(expr ={ggplotRegression(fit=lmp(ln_nb_copy_gene ~ nb_uniq_species_of_gene, data = current_df_plot, na.action=na.omit,center=FALSE), ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("log_nb_copy_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "Gene_Mobility",ylabl = "ln(nb_copy_gene)")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         }
         
         #avg_cai vs Gene_Mobility (STANDARDIZED)
@@ -2130,7 +2477,7 @@ if (as.integer(num_fitness_landscape) != 7){
         v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
 
         if (length(intersect(which(is.finite(df_current_gene_in_time$avg_cai)),which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene))))>=2){
-            tryCatch(expr ={ggplotRegression(fit=lmp(avg_cai ~ nb_uniq_species_of_gene, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_avg_cai_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized Gene_Mobility",ylabl = "standardized average CAI")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+            tryCatch(expr ={ggplotRegression(fit=lmp(avg_cai ~ nb_uniq_species_of_gene, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_avg_cai_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized Gene_Mobility",ylabl = "standardized average CAI")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         }       
         
         
@@ -2143,7 +2490,11 @@ if (as.integer(num_fitness_landscape) != 7){
           current_y <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$D_Taj)
           current_x <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_uniq_species_of_gene)
           v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
-          tryCatch(expr ={list_results_current_lm_D_Taj_vs_Gene_Mobility=ggplotRegression(fit=lmp(D_Taj~nb_uniq_species_of_gene , data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Tajima_D_VS_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized Gene_Mobility",ylabl = "standardized Tajima_D")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+          df_current_plot <- df_current_gene_in_time[v_pos_for_current_reg,]
+          df_current_plot$D_Taj <- log10(df_current_plot$D_Taj+(1e-16)) 
+          df_current_plot$nb_uniq_species_of_gene <- log10(df_current_plot$nb_uniq_species_of_gene+(1e-16))
+          
+          tryCatch(expr ={list_results_current_lm_D_Taj_vs_Gene_Mobility=ggplotRegression(fit=lmp(D_Taj~nb_uniq_species_of_gene , data = df_current_plot,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("Tajima_D_VS_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "Gene_Mobility",ylabl = "Tajima_D")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         }
       
         if (length(intersect(which(is.finite(df_current_gene_in_time$D_Taj)),which(is.finite(df_current_gene_in_time$dnds))))>=2){
@@ -2155,7 +2506,7 @@ if (as.integer(num_fitness_landscape) != 7){
           current_y <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$D_Taj)
           current_x <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$dnds)
           v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
-          tryCatch(expr = ggplotRegression(fit=lmp(D_Taj~dnds, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Tajima_D_VS_dnds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized dN/dS",ylabl = "standardized Tajima_D"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+          tryCatch(expr = ggplotRegression(fit=lmp(D_Taj~dnds, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Tajima_D_VS_dnds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized dN/dS",ylabl = "standardized Tajima_D"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         }
         if (length(intersect(which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene)),which(is.finite(df_current_gene_in_time$dnds))))>=2){
           ##Gene_Mobility in function of dN/dS plot (STANDARDIZED)
@@ -2165,7 +2516,7 @@ if (as.integer(num_fitness_landscape) != 7){
           current_y <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_uniq_species_of_gene)
           current_x <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$dnds)
           v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
-          tryCatch(expr =ggplotRegression(fit=lmp(nb_uniq_species_of_gene~dnds, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Gene_Mobility_VS_dnds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "dN/dS",ylabl = "Gene_Mobility"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+          tryCatch(expr =ggplotRegression(fit=lmp(nb_uniq_species_of_gene~dnds, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Gene_Mobility_VS_dnds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "dN/dS",ylabl = "Gene_Mobility"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         }
         #if (length(intersect(which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene)),which(is.finite(df_current_gene_in_time$dnds))))>=2){
           ##log10(Gene_Mobility) in function of log10(dN/dS) plot
@@ -2175,22 +2526,40 @@ if (as.integer(num_fitness_landscape) != 7){
           # current_y <- log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1E-16))
           # current_x <- log10(df_current_gene_in_time$dnds+(1E-16))
           # v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
-          # tryCatch(expr = ggplotRegression(fit=lmp(nb_uniq_species_of_gene ~ dnds, data = log10(df_current_gene_in_time+(1E-16))[v_pos_for_current_reg,],na.action=na.omit),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("Gene_Mobility_VS_dnds_in_log10_scale_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "log10(dN/dS)",ylabl = "log10(Gene_Mobility)"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+          # tryCatch(expr = ggplotRegression(fit=lmp(nb_uniq_species_of_gene ~ dnds, data = log10(df_current_gene_in_time+(1E-16))[v_pos_for_current_reg,],na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("Gene_Mobility_VS_dnds_in_log10_scale_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "log10(dN/dS)",ylabl = "log10(Gene_Mobility)"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         #}
       }
     }
     #Linear regressions explained by Gene Mobility
+    adj_r_square_lm_CAI_vs_ps[v_g_ind] <-list_results_current_lm_CAI_vs_ps$adj_r_sq_current_lm
     adj_r_square_lm_Ne_k_hat_vs_Gene_Mobility[v_g_ind] <-list_results_current_lm_Ne_k_hat_vs_Gene_Mobility$adj_r_sq_current_lm
     adj_r_square_lm_Ne_S_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility$adj_r_sq_current_lm
     adj_r_square_lm_D_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_D_Taj_vs_Gene_Mobility$adj_r_sq_current_lm
+    Slope_lm_CAI_vs_ps[v_g_ind] <- list_results_current_lm_CAI_vs_ps$slope_current_lm
     Slope_lm_Ne_k_hat_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_Ne_k_hat_vs_Gene_Mobility$slope_current_lm
     Slope_lm_Ne_S_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility$slope_current_lm
     Slope_lm_D_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_D_Taj_vs_Gene_Mobility$slope_current_lm
+    pvalue_lm_CAI_vs_ps[v_g_ind] <- list_results_current_lm_CAI_vs_ps$p_val_current_lm
     pvalue_lm_Ne_k_hat_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_Ne_k_hat_vs_Gene_Mobility$p_val_current_lm
     pvalue_lm_Ne_S_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility$p_val_current_lm
     pvalue_lm_D_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_D_Taj_vs_Gene_Mobility$p_val_current_lm
   }
   
+  #multiple genes 1 time point near end of simulation (Ne_k_hat vs Mobility and Ne_S_Taj_vs_mobility)
+  df_subset_near_end_sim_current_reg <- subset(df_results_variants_analysis_current_sim,Generation_ctr%in%(sort(unique(Generation_ctr),decreasing = TRUE)[sample(1:3,1)]))
+  df_subset_near_end_sim_current_reg <- subset(df_subset_near_end_sim_current_reg,nb_uniq_species_of_gene!=0)
+  df_subset_near_end_sim_current_reg$Ne_k_hat <- log10(df_subset_near_end_sim_current_reg$Ne_k_hat+(1e-16)) 
+  df_subset_near_end_sim_current_reg$nb_uniq_species_of_gene <- log10(df_subset_near_end_sim_current_reg$nb_uniq_species_of_gene+(1e-16))
+  df_subset_near_end_sim_current_reg$Ne_S_Taj <- log10(df_subset_near_end_sim_current_reg$Ne_S_Taj+(1e-16))
+  tryCatch(expr ={ggplotRegression(fit=lmp(Ne_k_hat ~ nb_uniq_species_of_gene, data = df_subset_near_end_sim_current_reg,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("Multiple_gene_near_endsim_Ne_k_hat_vs_Gene_Mobility_sim_",simulation_name,".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_k_hat+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+  tryCatch(expr ={ggplotRegression(fit=lmp(Ne_S_Taj ~ nb_uniq_species_of_gene, data = df_subset_near_end_sim_current_reg,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("Multiple_gene_near_endsim_Ne_S_Taj_vs_Gene_Mobility_sim_",simulation_name,".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_S_Taj+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+  
+  
+  #Adjusting p_values to get FDR
+  pvalue_lm_CAI_vs_ps <- p.adjust(pvalue_lm_CAI_vs_ps, method = "BH")
+  pvalue_lm_Ne_k_hat_vs_Gene_Mobility <- p.adjust(pvalue_lm_Ne_k_hat_vs_Gene_Mobility, method = "BH")
+  pvalue_lm_Ne_S_Taj_vs_Gene_Mobility <- p.adjust(pvalue_lm_Ne_S_Taj_vs_Gene_Mobility, method = "BH")
+  pvalue_lm_D_Taj_vs_Gene_Mobility <- p.adjust(pvalue_lm_D_Taj_vs_Gene_Mobility, method = "BH")
   #Summary Figures of significant Gene_Mobility effects
   ggplot() + geom_density(mapping = aes(x = Slope_lm_Ne_k_hat_vs_Gene_Mobility[pvalue_lm_Ne_k_hat_vs_Gene_Mobility<=(p_val_threshold)],colour="Ne_k_hat")) + geom_density(mapping = aes(x = Slope_lm_D_Taj_vs_Gene_Mobility[pvalue_lm_D_Taj_vs_Gene_Mobility<=(p_val_threshold)],colour="D_Taj")) + geom_density(mapping = aes(x = Slope_lm_Ne_S_Taj_vs_Gene_Mobility[pvalue_lm_Ne_S_Taj_vs_Gene_Mobility<=(p_val_threshold)],colour="Ne_S_Taj")) + ggtitle(label = "Distribution of Slopes for regression models in which Gene Mobility is the explanatory variable") + xlab("Slope") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=9),plot.subtitle = element_text(hjust=0,size=8)) + geom_vline(xintercept = 0,mapping = aes(x = Slope_lm_Ne_k_hat_vs_Gene_Mobility[pvalue_lm_Ne_k_hat_vs_Gene_Mobility<=(p_val_threshold)])) + scale_color_manual(name="X ~ Gene Mobility",values = c(Ne_k_hat="red",Ne_S_Taj="blue",D_Taj="black")) + xlim(-3,3) + ylim(0,10)
   ggsave(filename = "Gene_Mobility_significant_slopes.png",path = save_plots_workspace_current_sim,width = 18, height = 10, units = "cm")
@@ -2198,9 +2567,12 @@ if (as.integer(num_fitness_landscape) != 7){
   ggplot() + geom_boxplot(aes(y=c(adj_r_square_lm_Ne_k_hat_vs_Gene_Mobility,adj_r_square_lm_Ne_S_Taj_vs_Gene_Mobility,adj_r_square_lm_D_Taj_vs_Gene_Mobility),x=rep(x = c("Ne_k_hat","Ne_S_Taj","D_Taj"),each=length(adj_r_square_lm_Ne_k_hat_vs_Gene_Mobility)))) + xlab("Response variable") + ylab("Adjusted R_squared")
   ggsave(filename = "Gene_Mobility_significant_adj_R_squared.png",path = save_plots_workspace_current_sim,width = 18, height = 10, units = "cm")  
   
-  #save the result matrix of the CURRENT SIMULATION
-  mtx_results_current_sim <- as.matrix(df_results_variants_analysis_current_sim)
-  write.table(mtx_results_current_sim, file = paste0(save_plots_workspace_current_sim,"/mtx_variants_analysis_results_simulation_",simulation_name,".csv"),row.names=TRUE, na="NA",col.names=TRUE, sep="\t")
+  #Summary Figures of CAI vs ps
+  ggplot() + geom_density(mapping = aes(x = Slope_lm_CAI_vs_ps[pvalue_lm_CAI_vs_ps<=(p_val_threshold)],colour="CAI_vs_ps")) + ggtitle(label = "Distribution of Slopes for regression CAI vs ps") + xlab("Slope") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=9),plot.subtitle = element_text(hjust=0,size=8)) + geom_vline(xintercept = 0,mapping = aes(x = Slope_lm_CAI_vs_ps[pvalue_lm_CAI_vs_ps<=(p_val_threshold)])) + scale_color_manual(name="CAI ~ ps",values = c(CAI_vs_ps="black")) + xlim(-100,100) + ylim(0,20)
+  ggsave(filename = "CAI_vs_ps_significant_slopes.png",path = save_plots_workspace_current_sim,width = 18, height = 10, units = "cm")
+  
+  ggplot() + geom_density(mapping = aes(x = adj_r_square_lm_CAI_vs_ps[pvalue_lm_CAI_vs_ps<=(p_val_threshold)],colour="CAI_vs_ps")) + ggtitle(label = "Distribution of R-squared for regression CAI vs ps") + xlab("R-squared") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=9),plot.subtitle = element_text(hjust=0,size=8)) + geom_vline(xintercept = 0,mapping = aes(x = adj_r_square_lm_CAI_vs_ps[pvalue_lm_CAI_vs_ps<=(p_val_threshold)])) + scale_color_manual(name="CAI ~ ps",values = c(CAI_vs_ps="black")) + xlim(-1,1) + ylim(0,20)
+  ggsave(filename = "CAI_vs_ps_significant_r_squared.png",path = save_plots_workspace_current_sim,width = 18, height = 10, units = "cm")
   
 }
 #Interesting mobile genes to look as variant analysis results
