@@ -1922,7 +1922,7 @@ std::map<int,int> get_ref_map_subpops_abundance(){
     }
 }
 
-std::map<int, double> init_map_gene_s_gain(double p_exp_rate){
+std::map<int, double> init_map_gene_s_gain(double p_exp_rate,  std::string outDir){
     //Read files/genes/gene_list.dat and each time a gene is specified, read it, convert string of the gene ID into int ID, initialize an Exponential distribution random number generator (rate= p_exp_rate),  add to a map a key:value = int ID : randomly drawn number (gene gain selective coefficient)
     bool b_f_does_exit = false;
     std::map<int, double> out_map_sel_adv_genes;
@@ -1933,10 +1933,11 @@ std::map<int, double> init_map_gene_s_gain(double p_exp_rate){
         b_f_does_exit = true;
         fclose(file);
     }
+	
     //verify if file exists
     if (b_f_does_exit){
         std::ofstream s_hgt_genes_file;
-        s_hgt_genes_file.open ("files/genes/sel_coeff_gain_genes.csv");
+        s_hgt_genes_file.open(("out/"+outDir+"/sel_coeff_gain_genes.csv").c_str());
         s_hgt_genes_file << "gene_id" << "\t" << "s_gain" << std::endl;
         // read gene IDs one by one and add them in out_map_sel_adv_genes with a randomly drawn HGT selective advantage as value 
         std::ifstream the_gene_list_ifs (buffer, std::ifstream::in);

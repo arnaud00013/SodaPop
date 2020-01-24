@@ -200,6 +200,8 @@ int main(int argc, char *argv[])
 
         enableAnalysis = analysisArg.getValue();
         trackMutations = eventsArg.getValue();
+		
+	createOutputDir(outDir);
 	
 	// if user want to simulate HGT and loss, set HGT parameters to commandline input
         if (pangenomes_evo_Arg.isSet()){
@@ -211,7 +213,7 @@ int main(int argc, char *argv[])
             r_prime = r_prime_Arg.getValue();
             s_prime = s_prime_Arg.getValue();
             exp_rate_s_hgt = ersh_Arg.getValue();
-            Gene::map_gene_gain_selective_coeff_ = init_map_gene_s_gain(exp_rate_s_hgt); //fill gene gain selective coef map 
+            Gene::map_gene_gain_selective_coeff_ = init_map_gene_s_gain(exp_rate_s_hgt,outDir); //fill gene gain selective coef map 
             b_for_s_x = b_Arg.getValue();
             if (exec_variant_analysis_Arg.isSet()){
                 execute_variant_analysis = exec_variant_analysis_Arg.getValue();
@@ -248,7 +250,7 @@ int main(int argc, char *argv[])
         std::cout << "Mutations are not active." << std::endl;
     }
 
-    createOutputDir(outDir);
+    
 
     /* OPEN SIMULATION LOG
     */
