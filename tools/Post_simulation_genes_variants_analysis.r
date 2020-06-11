@@ -39,13 +39,13 @@ nb_cores_variant_analysis <- as.integer(commandArgs(TRUE)[10]) #Number of CPUs u
 ############################################################## Script Body ###################################################
 system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("mkdir -p ",results_output_workspace),intern = FALSE,wait = TRUE)
 
-system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("cat ",sodapop_workspace,"files/start/*.cell | grep -whc G > ", results_output_workspace,"start_total_nb_genes.csv"),intern = FALSE,wait = TRUE)
-system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("ls ",sodapop_workspace,"files/start/*.cell | wc -l >> ", results_output_workspace,"start_total_nb_genes.csv"),intern = FALSE,wait = TRUE)
+system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("cat ",sodapop_workspace,"files/start/*.cell | grep -whc G > ", results_output_workspace,"start_total_nb_genes_",simulation_name,".csv"),intern = FALSE,wait = TRUE)
+system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("ls ",sodapop_workspace,"files/start/*.cell | wc -l >> ", results_output_workspace,"start_total_nb_genes_",simulation_name,".csv"),intern = FALSE,wait = TRUE)
 
-v_tot_and_mean <- read.csv(file = paste0(results_output_workspace,"start_total_nb_genes.csv"),header = FALSE,sep = "\t",stringsAsFactors = FALSE)$V1
+v_tot_and_mean <- read.csv(file = paste0(results_output_workspace,"start_total_nb_genes_",simulation_name,".csv"),header = FALSE,sep = "\t",stringsAsFactors = FALSE)$V1
 average_nb_genes_per_genomes_at_start <- floor(v_tot_and_mean[1]/v_tot_and_mean[2])
 
-system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("rm -f ", results_output_workspace,"start_total_nb_genes.csv"),intern = FALSE,wait = TRUE)
+#system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("rm -f ", results_output_workspace,"start_total_nb_genes_",simulation_name,".csv"),intern = FALSE,wait = TRUE)
 
 #function for plotting linear model
 ggplotRegression <- function (fit,ggsave_path,the_filename,xlabl=NA,ylabl=NA) {
@@ -59,7 +59,7 @@ ggplotRegression <- function (fit,ggsave_path,the_filename,xlabl=NA,ylabl=NA) {
   }
   adj_r_sq <- formatC(summary(fit)$adj.r.squared, format = "e", digits = 3)
   slope <-formatC(summary(fit)$coefficients[,1][2], format = "e", digits = 3)
-  p_val <- formatC(summary(fit)$coefficients[,2][2], format = "e", digits = 3)
+  p_val <- formatC(summary(fit)$coefficients[,3][2], format = "e", digits = 3)
   tryCatch(expr = {ggplot(fit$model, aes_string(x = names(fit$model)[2], y = names(fit$model)[1])) +
     geom_point() +
     stat_smooth(method = "lm", col = "red") +
@@ -77,7 +77,41 @@ ggplotRegression <- function (fit,ggsave_path,the_filename,xlabl=NA,ylabl=NA) {
     #return result as the real float numbers
     adj_r_sq <- unname(summary(fit)$adj.r.squared)
     slope <-unname(summary(fit)$coefficients[,1][2])
-    p_val <- unname(summary(fit)$coefficients[,2][2])
+    p_val <- unname(summary(fit)$coefficients[,3][2])
+  return(list(adj_r_sq_current_lm = adj_r_sq,slope_current_lm = slope,p_val_current_lm=p_val))
+}
+
+#function for plotting linear model with colored points
+ggplotRegression_v2 <- function (fit,ggsave_path,the_filename,xlabl=NA,ylabl=NA,the_point_colour="black") {
+  library(ggplot2)
+  bool_gg_save <- TRUE
+  if(is.na(xlabl)){
+    xlabl <- names(fit$model)[2]
+  }
+  if(is.na(ylabl)){
+    ylabl <- names(fit$model)[1]
+  }
+  adj_r_sq <- formatC(summary(fit)$adj.r.squared, format = "e", digits = 3)
+  slope <-formatC(summary(fit)$coefficients[,1][2], format = "e", digits = 3)
+  p_val <- formatC(summary(fit)$coefficients[,3][2], format = "e", digits = 3)
+  tryCatch(expr = {ggplot(fit$model, aes_string(x = names(fit$model)[2], y = names(fit$model)[1])) +
+      geom_point(aes(col=the_point_colour)) + scale_color_manual(name="Median group",values = c(M1="red",M2="blue")) +
+      stat_smooth(method = "lm", col = "red") +
+      xlab(xlabl)+
+      ylab(ylabl)+
+      labs(title = paste("Adj R2 = ",adj_r_sq,
+                         " Slope =",slope,
+                         " P =",p_val))+ theme(plot.title=element_text(hjust=0,size=12))},error=function(e) bool_gg_save <- FALSE)
+  
+  if (bool_gg_save){
+    ggsave(filename = the_filename, path=ggsave_path, width = 15, height = 20, units = "cm")
+  }else{
+    print(paste0(the_filename, "won't be created because of it is irrelevant for gene in path ", ggsave_path))
+  }
+  #return result as the real float numbers
+  adj_r_sq <- unname(summary(fit)$adj.r.squared)
+  slope <-unname(summary(fit)$coefficients[,1][2])
+  p_val <- unname(summary(fit)$coefficients[,3][2])
   return(list(adj_r_sq_current_lm = adj_r_sq,slope_current_lm = slope,p_val_current_lm=p_val))
 }
 
@@ -2238,14 +2272,14 @@ if (as.integer(num_fitness_landscape) != 7){
   #Gene mobility distributions (1 gene multiple time points AND multiple genes 1 time point) ***NEED AT LEAST 5 TIME POINTS!!!
   #1 gene multiple time points
   tryCatch(expr ={
-    ggplot(data=subset(df_results_variants_analysis_current_sim,gene_ID==names(sort(table(gene_ID),decreasing = TRUE))[sample(1:3,1)])) + geom_density(mapping = aes(x = nb_uniq_species_of_gene)) + xlab("Gene mobility") + ylab("Density")
+    ggplot(data=subset(df_results_variants_analysis_current_sim,gene_ID==sample(unique(gene_ID),1))) + geom_density(mapping = aes(x = nb_uniq_species_of_gene)) + xlab("Gene mobility") + ylab("Density")
     ggsave(filename = "Gene_Mobility_distribution_1_gene_multiple_time_points.png", path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
   },error=function(e) print(paste0("Gene Mobility distribution are plotted when there is at least 5 time points saved from simulation <- ",e)))
   
   
   #multiple genes 1 time point
   tryCatch(expr ={
-    ggplot(data=subset(df_results_variants_analysis_current_sim,Generation_ctr==(sort(unique(Generation_ctr),decreasing = TRUE)[sample(1:3,1)]))) + geom_density(mapping = aes(x = nb_uniq_species_of_gene)) + xlab("Gene mobility") + ylab("Density")
+    ggplot(data=subset(df_results_variants_analysis_current_sim,Generation_ctr==(sort(unique(Generation_ctr),decreasing = TRUE)[sample(1:2,1)]))) + geom_density(mapping = aes(x = nb_uniq_species_of_gene)) + scale_x_continuous(breaks=1:nb_species_simulated,limits=c(1,nb_species_simulated)) + xlab("Gene mobility") + ylab("Density")
     ggsave(filename = "Gene_Mobility_distribution_Multiple_genes_1_time_point.png", path=save_plots_workspace_current_sim, width = 15, height = 20, units = "cm")
   },error=function(e) print(paste0("Gene Mobility distribution are plotted when there is at least 5 time points saved from simulation <- ",e)))
   
@@ -2255,25 +2289,28 @@ if (as.integer(num_fitness_landscape) != 7){
   #initialization
   v_unique_gene_IDs_current_sim <- sort(unique(subset(x = df_results_variants_analysis_current_sim,subset = nb_uniq_species_of_gene>1)$gene_ID))#redefine v_unique_gene_IDs_current_sim as the list of mobile genes 
   
-  Slope_lm_CAI_vs_ps <- rep(NA,length(v_unique_gene_IDs_current_sim))
   Slope_lm_Ne_k_hat_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
   Slope_lm_Ne_S_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
   Slope_lm_D_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
-  pvalue_lm_CAI_vs_ps <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  Slope_lm_CAI_vs_ps <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  Slope_lm_log10_nb_copy_gene_vs_Gene_mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
   pvalue_lm_Ne_k_hat_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
   pvalue_lm_Ne_S_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  pvalue_lm_CAI_vs_ps <- rep(NA,length(v_unique_gene_IDs_current_sim))
   pvalue_lm_D_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
-  adj_r_square_lm_CAI_vs_ps <- rep(NA,length(v_unique_gene_IDs_current_sim))
-  adj_r_square_lm_Ne_k_hat_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
-  adj_r_square_lm_Ne_S_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
-  adj_r_square_lm_D_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
-  p_val_threshold <- 100# 0.05 #/length(v_unique_gene_IDs_current_sim) #No Bonferroni because p-value are adjusted to become FDR
+  pvalue_lm_log10_nb_copy_gene_vs_Gene_mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  adj_r_squared_lm_Ne_k_hat_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  adj_r_squared_lm_Ne_S_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  adj_r_squared_lm_D_Taj_vs_Gene_Mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  adj_r_squared_lm_CAI_vs_ps <- rep(NA,length(v_unique_gene_IDs_current_sim))
+  adj_r_squared_lm_log10_nb_copy_gene_vs_Gene_mobility <- rep(NA,length(v_unique_gene_IDs_current_sim))
   #####DON't FORGET that variable "save_plots_workspace_current_sim" does not have "/" at the end
   for (v_g_ind in 1:length(v_unique_gene_IDs_current_sim)){
     list_results_current_lm_Ne_k_hat_vs_Gene_Mobility <- list(adj_r_sq_current_lm = NA,slope_current_lm = NA,p_val_current_lm=NA)
     list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility <- list(adj_r_sq_current_lm = NA,slope_current_lm = NA,p_val_current_lm=NA)
     list_results_current_lm_D_Taj_vs_Gene_Mobility <- list(adj_r_sq_current_lm = NA,slope_current_lm = NA,p_val_current_lm=NA)
     list_results_current_lm_CAI_vs_ps <- list(adj_r_sq_current_lm = NA,slope_current_lm = NA,p_val_current_lm=NA)
+    list_results_current_lm_log10_nb_copy_gene_vs_Gene_mobility <- list(adj_r_sq_current_lm = NA,slope_current_lm = NA,p_val_current_lm=NA)
     
     save_plots_workspace_current_gene <- paste0(save_plots_workspace_current_sim,"/gene_",v_unique_gene_IDs_current_sim[v_g_ind])
     system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("rm -rf ",save_plots_workspace_current_gene,"/"),intern = FALSE,wait = TRUE)
@@ -2322,7 +2359,7 @@ if (as.integer(num_fitness_landscape) != 7){
         #dn vs ds 
         v_pos_for_current_reg <-intersect(which(is.finite(df_current_gene_in_time$dn)),which(is.finite(df_current_gene_in_time$ds)))
         tryCatch(expr = ggplotRegression(fit=lmp(dn ~ ds, data = df_current_gene_in_time[v_pos_for_current_reg,],na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("dn_vs_ds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "ds",ylabl = "dn"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
-      
+        
       }
     }
     
@@ -2344,38 +2381,38 @@ if (as.integer(num_fitness_landscape) != 7){
         
       }
     }
-
+    
     if (length(na.omit(df_current_gene_in_time$Ne_S_Taj))>=1){
-   
-        #Ne_S_Taj in function of Generation plot
-        png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_Ne_S_Taj_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
-        plot(df_current_gene_in_time$Ne_S_Taj~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene Ne_S_Taj",col="red",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$Ne_S_Taj,na.rm = TRUE),max(df_current_gene_in_time$Ne_S_Taj,na.rm=TRUE)))
-        axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
-        dev.off()
-        #log10(Ne_S_Taj) in function of Generation plot
-        png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_log10_Ne_S_Taj_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
-        plot(replace(x = log10(df_current_gene_in_time$Ne_S_Taj+(1E-16)),list = which(log10(df_current_gene_in_time$Ne_S_Taj+(1E-16))==-16),values = NA)~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene log10(Ne_S_Taj)",col="red",xlim=c(1,simulation_time+1),ylim=c(-16,10))
-        axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
-        dev.off()
+      
+      #Ne_S_Taj in function of Generation plot
+      png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_Ne_S_Taj_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
+      plot(df_current_gene_in_time$Ne_S_Taj~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene Ne_S_Taj",col="red",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$Ne_S_Taj,na.rm = TRUE),max(df_current_gene_in_time$Ne_S_Taj,na.rm=TRUE)))
+      axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
+      dev.off()
+      #log10(Ne_S_Taj) in function of Generation plot
+      png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_log10_Ne_S_Taj_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
+      plot(replace(x = log10(df_current_gene_in_time$Ne_S_Taj+(1E-16)),list = which(log10(df_current_gene_in_time$Ne_S_Taj+(1E-16))==-16),values = NA)~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene log10(Ne_S_Taj)",col="red",xlim=c(1,simulation_time+1),ylim=c(-16,10))
+      axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
+      dev.off()
       
     }
     
     if (length(na.omit(df_current_gene_in_time$Ne_k_hat))>=1){
       
-        #Ne_k_hat in function of Generation plot
-        png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_Ne_k_hat_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
-        plot(df_current_gene_in_time$Ne_k_hat~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene Ne_k_hat",col="red",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$Ne_k_hat,na.rm = TRUE),max(df_current_gene_in_time$Ne_k_hat,na.rm=TRUE)))
-        axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
-        dev.off()
-        #log10(Ne_k_hat) in function of Generation plot
-        png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_log10_Ne_k_hat_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
-        plot(replace(x = log10(df_current_gene_in_time$Ne_k_hat+(1E-16)),list = which(log10(df_current_gene_in_time$Ne_k_hat+(1E-16))==-16),values = NA)~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene log10(Ne_k_hat)",col="red",xlim=c(1,simulation_time+1),ylim=c(-16,10))
-        axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
-        dev.off()
+      #Ne_k_hat in function of Generation plot
+      png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_Ne_k_hat_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
+      plot(df_current_gene_in_time$Ne_k_hat~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene Ne_k_hat",col="red",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$Ne_k_hat,na.rm = TRUE),max(df_current_gene_in_time$Ne_k_hat,na.rm=TRUE)))
+      axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
+      dev.off()
+      #log10(Ne_k_hat) in function of Generation plot
+      png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_log10_Ne_k_hat_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
+      plot(replace(x = log10(df_current_gene_in_time$Ne_k_hat+(1E-16)),list = which(log10(df_current_gene_in_time$Ne_k_hat+(1E-16))==-16),values = NA)~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene log10(Ne_k_hat)",col="red",xlim=c(1,simulation_time+1),ylim=c(-16,10))
+      axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
+      dev.off()
       
       
     }
-      
+    
     
     if (length(na.omit(df_current_gene_in_time$D_Taj))>=1){
       #D_Taj in function of Generation plot
@@ -2402,7 +2439,7 @@ if (as.integer(num_fitness_landscape) != 7){
         plot(df_current_gene_in_time$nb_copy_gene~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Number of gene copy",col="blue",xlim=c(1,simulation_time+1),ylim=c(0,max(df_current_gene_in_time$nb_copy_gene,na.rm=TRUE)))
         axis(side=1, seq(from=1,to = simulation_time,by=round(simulation_time/10)),las=2)
         dev.off()
-
+        
         par(mfrow=c(1,1))
         
         #Do gene mobility analysis only if gene is mobile!
@@ -2411,31 +2448,31 @@ if (as.integer(num_fitness_landscape) != 7){
         # system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("rm -f ", results_output_workspace,"count_mobile.csv"),intern = FALSE,wait = TRUE)
         is_mobile_current_gene <- (max(df_current_gene_in_time$nb_uniq_species_of_gene,na.rm = TRUE) > 1)
         if (!is_mobile_current_gene){
-            next 
+          next 
         }
         
         if (length(na.omit(df_current_gene_in_time$avg_cai))>=1){
-            #avg_cai in function of Generation plot
-            png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_avg_cai_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
-            plot(df_current_gene_in_time$avg_cai~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene average CAI",col="red",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$avg_cai,na.rm = TRUE),max(df_current_gene_in_time$avg_cai,na.rm=TRUE)))
-            axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
+          #avg_cai in function of Generation plot
+          png(filename = paste0(save_plots_workspace_current_gene,"/Time_series_avg_cai_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
+          plot(df_current_gene_in_time$avg_cai~df_current_gene_in_time$Generation_ctr, type="p", pch=19,xaxt="n",xlab="Generation",ylab="Gene average CAI",col="red",xlim=c(1,simulation_time+1),ylim=c(min(df_current_gene_in_time$avg_cai,na.rm = TRUE),max(df_current_gene_in_time$avg_cai,na.rm=TRUE)))
+          axis(side=1, at=seq(0, simulation_time+dt, by=(2*dt)),las=2)
           dev.off()
         }
-
+        
         if (length(intersect(which(is.finite(df_current_gene_in_time$avg_cai)),which(is.finite(df_current_gene_in_time$ps))))>=2){
-            #average_cai vs ps 
-            v_pos_for_current_reg <-intersect(which(is.finite(df_current_gene_in_time$avg_cai)),which(is.finite(df_current_gene_in_time$ps)))
-            tryCatch(expr = ggplotRegression(fit=lmp(avg_cai ~ ps, data = df_current_gene_in_time[v_pos_for_current_reg,],na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("avg_cai_vs_ps_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "ps",ylabl = "average CAI"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
-            tryCatch(expr ={list_results_current_lm_CAI_vs_ps=ggplotRegression(fit=lmp(avg_cai ~ ps, data = df_current_gene_in_time[v_pos_for_current_reg,],na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("avg_CAI_vs_ps_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "ps",ylabl = "average CAI")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+          #average_cai vs ps 
+          v_pos_for_current_reg <-intersect(which(is.finite(df_current_gene_in_time$avg_cai)),which(is.finite(df_current_gene_in_time$ps)))
+          tryCatch(expr = ggplotRegression(fit=lmp(avg_cai ~ ps, data = df_current_gene_in_time[v_pos_for_current_reg,],na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("avg_cai_vs_ps_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "ps",ylabl = "average CAI"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+          tryCatch(expr ={list_results_current_lm_CAI_vs_ps=ggplotRegression(fit=lmp(avg_cai ~ ps, data = df_current_gene_in_time[v_pos_for_current_reg,],na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("avg_CAI_vs_ps_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "ps",ylabl = "average CAI")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         }
-
+        
         if (length(intersect(which(is.finite(df_current_gene_in_time$avg_cai)),which(is.finite(df_current_gene_in_time$ds))))>=2){
-            #average_cai vs ds 
-            v_pos_for_current_reg <-intersect(which(is.finite(df_current_gene_in_time$avg_cai)),which(is.finite(df_current_gene_in_time$ds)))
-            tryCatch(expr = ggplotRegression(fit=lmp(avg_cai ~ ds, data = df_current_gene_in_time[v_pos_for_current_reg,],na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("avg_cai_vs_ds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "ds",ylabl = "average CAI"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
-      
+          #average_cai vs ds 
+          v_pos_for_current_reg <-intersect(which(is.finite(df_current_gene_in_time$avg_cai)),which(is.finite(df_current_gene_in_time$ds)))
+          tryCatch(expr = ggplotRegression(fit=lmp(avg_cai ~ ds, data = df_current_gene_in_time[v_pos_for_current_reg,],na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("avg_cai_vs_ds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "ds",ylabl = "average CAI"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+          
         }
-
+        
         #log10(Ne_k_hat+(1e-16)) vs log10(Gene_Mobility+(1e-16)) 
         current_y <- log10(df_current_gene_in_time$Ne_k_hat+(1e-16))#scale(center=TRUE,scale=TRUE,df_current_gene_in_time$Ne_k_hat)
         current_x <- log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1e-16)) #scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_uniq_species_of_gene)
@@ -2445,7 +2482,7 @@ if (as.integer(num_fitness_landscape) != 7){
         df_current_plot$nb_uniq_species_of_gene <- log10(df_current_plot$nb_uniq_species_of_gene+(1e-16))
         
         if (length(intersect(which(is.finite(df_current_gene_in_time$Ne_k_hat)),which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene))))>=2){
-            tryCatch(expr ={list_results_current_lm_Ne_k_hat_vs_Gene_Mobility=ggplotRegression(fit=lmp(Ne_k_hat ~ nb_uniq_species_of_gene, data = df_current_plot,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("Ne_k_hat_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_k_hat+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+          tryCatch(expr ={list_results_current_lm_Ne_k_hat_vs_Gene_Mobility=ggplotRegression(fit=lmp(Ne_k_hat ~ nb_uniq_species_of_gene, data = df_current_plot,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("Ne_k_hat_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_k_hat+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         }
         
         #log10(Ne_S_Taj+(1e-16)) vs log10(Gene_Mobility+(1e-16)) 
@@ -2457,27 +2494,27 @@ if (as.integer(num_fitness_landscape) != 7){
         df_current_plot$nb_uniq_species_of_gene <- log10(df_current_plot$nb_uniq_species_of_gene+(1e-16))
         
         if (length(intersect(which(is.finite(df_current_gene_in_time$Ne_S_Taj)),which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene))))>=2){
-            tryCatch(expr ={list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility=ggplotRegression(fit=lmp(Ne_S_Taj ~ nb_uniq_species_of_gene, data = df_current_plot,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("Ne_S_Taj_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_S_Taj+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+          tryCatch(expr ={list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility=ggplotRegression(fit=lmp(Ne_S_Taj ~ nb_uniq_species_of_gene, data = df_current_plot,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("Ne_S_Taj_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_S_Taj+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         }
-
+        
         #log(nb_copy_gene + (1E-16)) vs Gene_Mobility 
-        df_current_gene_in_time$ln_nb_copy_gene <- log(df_current_gene_in_time$nb_copy_gene + (1E-16))
+        df_current_gene_in_time$ln_nb_copy_gene <- log10(df_current_gene_in_time$nb_copy_gene + (1E-16))
         current_y <- df_current_gene_in_time$ln_nb_copy_gene
         current_x <- df_current_gene_in_time$nb_uniq_species_of_gene
         v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
         current_df_plot <- as.data.frame((df_current_gene_in_time)[v_pos_for_current_reg,])
-
+        
         if (length(intersect(which(is.finite(current_y)),which(is.finite(current_x))))>=2){
-            tryCatch(expr ={ggplotRegression(fit=lmp(ln_nb_copy_gene ~ nb_uniq_species_of_gene, data = current_df_plot, na.action=na.omit,center=FALSE), ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("log_nb_copy_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "Gene_Mobility",ylabl = "ln(nb_copy_gene)")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+          tryCatch(expr ={list_results_current_lm_log10_nb_copy_gene_vs_Gene_mobility=ggplotRegression(fit=lmp(ln_nb_copy_gene ~ nb_uniq_species_of_gene, data = current_df_plot, na.action=na.omit,center=FALSE), ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("log_nb_copy_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "Gene_Mobility",ylabl = "ln(nb_copy_gene)")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         }
         
         #avg_cai vs Gene_Mobility (STANDARDIZED)
         current_y <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$avg_cai)
         current_x <- scale(center=TRUE,scale=TRUE,df_current_gene_in_time$nb_uniq_species_of_gene)
         v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
-
+        
         if (length(intersect(which(is.finite(df_current_gene_in_time$avg_cai)),which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene))))>=2){
-            tryCatch(expr ={ggplotRegression(fit=lmp(avg_cai ~ nb_uniq_species_of_gene, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_avg_cai_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized Gene_Mobility",ylabl = "standardized average CAI")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+          tryCatch(expr ={ggplotRegression(fit=lmp(avg_cai ~ nb_uniq_species_of_gene, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_avg_cai_vs_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "standardized Gene_Mobility",ylabl = "standardized average CAI")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         }       
         
         
@@ -2496,7 +2533,7 @@ if (as.integer(num_fitness_landscape) != 7){
           
           tryCatch(expr ={list_results_current_lm_D_Taj_vs_Gene_Mobility=ggplotRegression(fit=lmp(D_Taj~nb_uniq_species_of_gene , data = df_current_plot,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("Tajima_D_VS_Gene_Mobility_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "Gene_Mobility",ylabl = "Tajima_D")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         }
-      
+        
         if (length(intersect(which(is.finite(df_current_gene_in_time$D_Taj)),which(is.finite(df_current_gene_in_time$dnds))))>=2){
           ##D_Taj in function of dN/dS plot (STANDARDIZED)
           # png(filename = paste0(save_plots_workspace_current_gene,"/Tajima_D_VS_log10_dnds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
@@ -2519,66 +2556,121 @@ if (as.integer(num_fitness_landscape) != 7){
           tryCatch(expr =ggplotRegression(fit=lmp(nb_uniq_species_of_gene~dnds, data = as.data.frame(scale(center=TRUE,scale=TRUE,df_current_gene_in_time)[v_pos_for_current_reg,]),na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("standardized_Gene_Mobility_VS_dnds_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "dN/dS",ylabl = "Gene_Mobility"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         }
         #if (length(intersect(which(is.finite(df_current_gene_in_time$nb_uniq_species_of_gene)),which(is.finite(df_current_gene_in_time$dnds))))>=2){
-          ##log10(Gene_Mobility) in function of log10(dN/dS) plot
-          # png(filename = paste0(save_plots_workspace_current_gene,"/Gene_Mobility_VS_dnds_log10_scale_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
-          # plot(log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1E-16))~log10(df_current_gene_in_time$dnds+(1E-16)), type="p", pch=19,xlab="log10(dN/dS)",ylab="log10(Gene_Mobility)",col="red",ylim=c(min(log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1E-16)),na.rm = TRUE),max(log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1E-16)),na.rm=TRUE)))
-          # dev.off()
-          # current_y <- log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1E-16))
-          # current_x <- log10(df_current_gene_in_time$dnds+(1E-16))
-          # v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
-          # tryCatch(expr = ggplotRegression(fit=lmp(nb_uniq_species_of_gene ~ dnds, data = log10(df_current_gene_in_time+(1E-16))[v_pos_for_current_reg,],na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("Gene_Mobility_VS_dnds_in_log10_scale_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "log10(dN/dS)",ylabl = "log10(Gene_Mobility)"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+        ##log10(Gene_Mobility) in function of log10(dN/dS) plot
+        # png(filename = paste0(save_plots_workspace_current_gene,"/Gene_Mobility_VS_dnds_log10_scale_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),width = 1000, height = 700, units = "px")
+        # plot(log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1E-16))~log10(df_current_gene_in_time$dnds+(1E-16)), type="p", pch=19,xlab="log10(dN/dS)",ylab="log10(Gene_Mobility)",col="red",ylim=c(min(log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1E-16)),na.rm = TRUE),max(log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1E-16)),na.rm=TRUE)))
+        # dev.off()
+        # current_y <- log10(df_current_gene_in_time$nb_uniq_species_of_gene+(1E-16))
+        # current_x <- log10(df_current_gene_in_time$dnds+(1E-16))
+        # v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
+        # tryCatch(expr = ggplotRegression(fit=lmp(nb_uniq_species_of_gene ~ dnds, data = log10(df_current_gene_in_time+(1E-16))[v_pos_for_current_reg,],na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_gene,the_filename=paste0("Gene_Mobility_VS_dnds_in_log10_scale_sim_",simulation_name,"_gene_",v_unique_gene_IDs_current_sim[v_g_ind],".png"),xlabl = "log10(dN/dS)",ylabl = "log10(Gene_Mobility)"),error=function(e) print(paste0("Regression skipped because of following error : ",e)))
         #}
       }
     }
     #Linear regressions explained by Gene Mobility
-    adj_r_square_lm_CAI_vs_ps[v_g_ind] <-list_results_current_lm_CAI_vs_ps$adj_r_sq_current_lm
-    adj_r_square_lm_Ne_k_hat_vs_Gene_Mobility[v_g_ind] <-list_results_current_lm_Ne_k_hat_vs_Gene_Mobility$adj_r_sq_current_lm
-    adj_r_square_lm_Ne_S_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility$adj_r_sq_current_lm
-    adj_r_square_lm_D_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_D_Taj_vs_Gene_Mobility$adj_r_sq_current_lm
+    adj_r_squared_lm_CAI_vs_ps[v_g_ind] <-list_results_current_lm_CAI_vs_ps$adj_r_sq_current_lm
+    adj_r_squared_lm_Ne_k_hat_vs_Gene_Mobility[v_g_ind] <-list_results_current_lm_Ne_k_hat_vs_Gene_Mobility$adj_r_sq_current_lm
+    adj_r_squared_lm_Ne_S_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility$adj_r_sq_current_lm
+    adj_r_squared_lm_D_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_D_Taj_vs_Gene_Mobility$adj_r_sq_current_lm
+    adj_r_squared_lm_log10_nb_copy_gene_vs_Gene_mobility[v_g_ind] <-list_results_current_lm_log10_nb_copy_gene_vs_Gene_mobility$adj_r_sq_current_lm
     Slope_lm_CAI_vs_ps[v_g_ind] <- list_results_current_lm_CAI_vs_ps$slope_current_lm
     Slope_lm_Ne_k_hat_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_Ne_k_hat_vs_Gene_Mobility$slope_current_lm
     Slope_lm_Ne_S_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility$slope_current_lm
     Slope_lm_D_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_D_Taj_vs_Gene_Mobility$slope_current_lm
+    Slope_lm_log10_nb_copy_gene_vs_Gene_mobility[v_g_ind] <-list_results_current_lm_log10_nb_copy_gene_vs_Gene_mobility$slope_current_lm
     pvalue_lm_CAI_vs_ps[v_g_ind] <- list_results_current_lm_CAI_vs_ps$p_val_current_lm
     pvalue_lm_Ne_k_hat_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_Ne_k_hat_vs_Gene_Mobility$p_val_current_lm
     pvalue_lm_Ne_S_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_Ne_S_Taj_vs_Gene_Mobility$p_val_current_lm
     pvalue_lm_D_Taj_vs_Gene_Mobility[v_g_ind] <- list_results_current_lm_D_Taj_vs_Gene_Mobility$p_val_current_lm
+    pvalue_lm_log10_nb_copy_gene_vs_Gene_mobility[v_g_ind] <-list_results_current_lm_log10_nb_copy_gene_vs_Gene_mobility$p_val_current_lm
+  }
+  #df_genes_s_hgt <- read.csv(file = paste0(sim_output_workpace,simulation_name,"/sel_coeff_gain_genes.csv"),header = TRUE,sep = "\t",stringsAsFactors = FALSE)
+  #rownames(df_genes_s_hgt) <- df_genes_s_hgt$gene_id
+  #df_genes_s_hgt <- df_genes_s_hgt[as.character(v_unique_gene_IDs_current_sim),]
+  #multiple genes 1 time point near end of simulation (Ne_k_hat vs Mobility and Ne_S_Taj_vs_mobility)
+    #log10(Ne_k_hat+(1e-16)) vs log10(Gene_Mobility+(1e-16)) AND log10(Ne_S_Taj+(1e-16)) vs log10(Gene_Mobility+(1e-16))
+  df_mbgs_variants_stats_before_max_mobility <- subset(x = df_results_variants_analysis_current_sim,subset = nb_uniq_species_of_gene!=max(df_results_variants_analysis_current_sim$nb_uniq_species_of_gene,na.rm=TRUE))
+  df_mbgs_variants_stats_before_max_mobility$Ne_k_hat <- log10(df_mbgs_variants_stats_before_max_mobility$Ne_k_hat+(1E-16))
+  df_mbgs_variants_stats_before_max_mobility$Ne_S_Taj <- log10(df_mbgs_variants_stats_before_max_mobility$Ne_S_Taj+(1E-16))
+  df_mbgs_variants_stats_before_max_mobility$nb_uniq_species_of_gene <- log10(df_mbgs_variants_stats_before_max_mobility$nb_uniq_species_of_gene+(1E-16))
+  #df_mbgs_variants_stats_before_max_mobility$s_hgt <- df_genes_s_hgt[as.character(df_mbgs_variants_stats_before_max_mobility$gene_ID),"s_gain"]
+  df_mbgs_variants_stats_before_max_mobility$median_group_s_hgt <- ifelse(df_mbgs_variants_stats_before_max_mobility$s_hgt<median(df_mbgs_variants_stats_before_max_mobility$s_hgt,na.rm=TRUE),yes="M1",no="M2")
+  df_mbgs_variants_stats_before_max_mobility$median_group_avg_cai <- ifelse(df_mbgs_variants_stats_before_max_mobility$avg_cai<median(df_mbgs_variants_stats_before_max_mobility$avg_cai,na.rm=TRUE),yes="M1",no="M2")
+  #coloured plots
+  tryCatch(expr ={ggplotRegression_v2(fit=lmp(Ne_k_hat ~ nb_uniq_species_of_gene, data = df_mbgs_variants_stats_before_max_mobility,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("Multiple_mbgs_at_endsim_Ne_k_hat_vs_Gene_Mobility_with_sHGT_colors_sim_",simulation_name,".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_k_hat+(1e-16))",the_point_colour = df_mbgs_variants_stats_before_max_mobility$median_group_s_hgt)},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+  tryCatch(expr ={ggplotRegression_v2(fit=lmp(Ne_S_Taj ~ nb_uniq_species_of_gene, data = df_mbgs_variants_stats_before_max_mobility,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("Multiple_mbgs_at_endsim_Ne_S_Taj_vs_Gene_Mobility_with_sHGT_colors_sim_",simulation_name,".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_S_Taj+(1e-16))",the_point_colour = df_mbgs_variants_stats_before_max_mobility$median_group_s_hgt)},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+  tryCatch(expr ={ggplotRegression_v2(fit=lmp(Ne_k_hat ~ nb_uniq_species_of_gene, data = df_mbgs_variants_stats_before_max_mobility,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("Multiple_mbgs_at_endsim_Ne_k_hat_vs_Gene_Mobility_with_avg_cai_colors_sim_",simulation_name,".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_k_hat+(1e-16))",the_point_colour = df_mbgs_variants_stats_before_max_mobility$median_group_avg_cai)},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+  tryCatch(expr ={ggplotRegression_v2(fit=lmp(Ne_S_Taj ~ nb_uniq_species_of_gene, data = df_mbgs_variants_stats_before_max_mobility,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("Multiple_mbgs_at_endsim_Ne_S_Taj_vs_Gene_Mobility_with_avg_cai_colors_sim_",simulation_name,".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_S_Taj+(1e-16))",the_point_colour = df_mbgs_variants_stats_before_max_mobility$median_group_avg_cai)},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+  #Non-coloured plots
+  tryCatch(expr ={ggplotRegression(fit=lmp(Ne_k_hat ~ nb_uniq_species_of_gene, data = df_mbgs_variants_stats_before_max_mobility,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("Multiple_mbgs_at_endsim_Ne_k_hat_vs_Gene_Mobility_sim_",simulation_name,".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_k_hat+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+  tryCatch(expr ={ggplotRegression(fit=lmp(Ne_S_Taj ~ nb_uniq_species_of_gene, data = df_mbgs_variants_stats_before_max_mobility,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("Multiple_mbgs_at_endsim_Ne_S_Taj_vs_Gene_Mobility_sim_",simulation_name,".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_S_Taj+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+  tryCatch(expr ={ggplotRegression(fit=lmp(D_Taj ~ nb_uniq_species_of_gene, data = df_mbgs_variants_stats_before_max_mobility,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("Multiple_mbgs_at_endsim_D_Taj_vs_Gene_Mobility_sim_",simulation_name,".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(D_Taj+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+  # df_subset_near_end_sim_current_reg <- subset(df_results_variants_analysis_current_sim,Generation_ctr%in%(sort(unique(Generation_ctr),decreasing = TRUE)[1])) #if you want to use random time sampling near end of simulation, use [sample(1:3,1)] instead of [1]
+  # df_subset_near_end_sim_current_reg <- subset(df_subset_near_end_sim_current_reg,nb_uniq_species_of_gene!=0)
+  # df_subset_near_end_sim_current_reg$Ne_k_hat <- log10(df_subset_near_end_sim_current_reg$Ne_k_hat+(1e-16)) 
+  # df_subset_near_end_sim_current_reg$nb_uniq_species_of_gene <- log10(df_subset_near_end_sim_current_reg$nb_uniq_species_of_gene+(1e-16))
+  # df_subset_near_end_sim_current_reg$Ne_S_Taj <- log10(df_subset_near_end_sim_current_reg$Ne_S_Taj+(1e-16))
+  # tryCatch(expr ={ggplotRegression(fit=lmp(Ne_k_hat ~ nb_uniq_species_of_gene, data = df_subset_near_end_sim_current_reg,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("Multiple_mbgs_at_endsim_Ne_k_hat_vs_Gene_Mobility_sim_",simulation_name,".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_k_hat+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+  # tryCatch(expr ={ggplotRegression(fit=lmp(Ne_S_Taj ~ nb_uniq_species_of_gene, data = df_subset_near_end_sim_current_reg,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("Multiple_mbgs_at_endsim_Ne_S_Taj_vs_Gene_Mobility_sim_",simulation_name,".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_S_Taj+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+  
+  
+  #subset df_results_variants_analysis_current_sim for other plots
+  df_mbgs_variants_stats_at_end <- subset(x = df_results_variants_analysis_current_sim,subset = Generation_ctr==max(df_results_variants_analysis_current_sim$Generation_ctr))
+  df_mbgs_variants_stats_before_max_mobility <- subset(x = df_results_variants_analysis_current_sim,subset = nb_uniq_species_of_gene!=max(df_results_variants_analysis_current_sim$nb_uniq_species_of_gene,na.rm=TRUE))
+  
+  #standardized avg_cai vs ps 
+  current_y <- scale(df_mbgs_variants_stats_at_end$avg_cai,TRUE,TRUE)
+  current_x <- scale(df_mbgs_variants_stats_at_end$ps,TRUE,TRUE)
+  v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
+  df_current_plot <- df_mbgs_variants_stats_at_end[v_pos_for_current_reg,]
+  
+  if (length(intersect(which(is.finite(df_mbgs_variants_stats_at_end$avg_cai)),which(is.finite(df_mbgs_variants_stats_at_end$ps))))>=2){
+    tryCatch(expr ={ggplotRegression(fit=lmp(avg_cai ~ ps, data = df_current_plot,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("standardized_avg_cai_vs_ps_sim_",simulation_name,".png"),xlabl = "standardized ps",ylabl = "standardized avg_cai")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
   }
   
-  #multiple genes 1 time point near end of simulation (Ne_k_hat vs Mobility and Ne_S_Taj_vs_mobility)
-  df_subset_near_end_sim_current_reg <- subset(df_results_variants_analysis_current_sim,Generation_ctr%in%(sort(unique(Generation_ctr),decreasing = TRUE)[sample(1:3,1)]))
-  df_subset_near_end_sim_current_reg <- subset(df_subset_near_end_sim_current_reg,nb_uniq_species_of_gene!=0)
-  df_subset_near_end_sim_current_reg$Ne_k_hat <- log10(df_subset_near_end_sim_current_reg$Ne_k_hat+(1e-16)) 
-  df_subset_near_end_sim_current_reg$nb_uniq_species_of_gene <- log10(df_subset_near_end_sim_current_reg$nb_uniq_species_of_gene+(1e-16))
-  df_subset_near_end_sim_current_reg$Ne_S_Taj <- log10(df_subset_near_end_sim_current_reg$Ne_S_Taj+(1e-16))
-  tryCatch(expr ={ggplotRegression(fit=lmp(Ne_k_hat ~ nb_uniq_species_of_gene, data = df_subset_near_end_sim_current_reg,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("Multiple_gene_near_endsim_Ne_k_hat_vs_Gene_Mobility_sim_",simulation_name,".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_k_hat+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
-  tryCatch(expr ={ggplotRegression(fit=lmp(Ne_S_Taj ~ nb_uniq_species_of_gene, data = df_subset_near_end_sim_current_reg,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("Multiple_gene_near_endsim_Ne_S_Taj_vs_Gene_Mobility_sim_",simulation_name,".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_S_Taj+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+  #log10(nb_copy_gene) vs mobility 
+  current_y <- df_mbgs_variants_stats_before_max_mobility$nb_copy_gene
+  current_x <- df_mbgs_variants_stats_before_max_mobility$nb_uniq_species_of_gene
+  v_pos_for_current_reg <-intersect(which(is.finite(current_y)),which(is.finite(current_x)))
+  df_current_plot <- df_mbgs_variants_stats_before_max_mobility[v_pos_for_current_reg,]
+  df_current_plot$nb_copy_gene <- log10(df_current_plot$nb_copy_gene+(1e-16)) 
+  if (length(intersect(which(is.finite(df_mbgs_variants_stats_before_max_mobility$nb_copy_gene)),which(is.finite(df_mbgs_variants_stats_before_max_mobility$nb_uniq_species_of_gene))))>=2){
+    tryCatch(expr ={ggplotRegression(fit=lmp(nb_copy_gene ~ nb_uniq_species_of_gene, data = df_current_plot,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("log10_nb_copy_gene_vs_gene_mobility_sim_",simulation_name,".png"),xlabl = "gene_mobility",ylabl = "log10(nb_copy_gene)")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+  }
   
-  
-  #Adjusting p_values to get FDR
-  pvalue_lm_CAI_vs_ps <- p.adjust(pvalue_lm_CAI_vs_ps, method = "BH")
-  pvalue_lm_Ne_k_hat_vs_Gene_Mobility <- p.adjust(pvalue_lm_Ne_k_hat_vs_Gene_Mobility, method = "BH")
-  pvalue_lm_Ne_S_Taj_vs_Gene_Mobility <- p.adjust(pvalue_lm_Ne_S_Taj_vs_Gene_Mobility, method = "BH")
-  pvalue_lm_D_Taj_vs_Gene_Mobility <- p.adjust(pvalue_lm_D_Taj_vs_Gene_Mobility, method = "BH")
-  #Summary Figures of significant Gene_Mobility effects
-  ggplot() + geom_density(mapping = aes(x = Slope_lm_Ne_k_hat_vs_Gene_Mobility[pvalue_lm_Ne_k_hat_vs_Gene_Mobility<=(p_val_threshold)],colour="Ne_k_hat")) + geom_density(mapping = aes(x = Slope_lm_D_Taj_vs_Gene_Mobility[pvalue_lm_D_Taj_vs_Gene_Mobility<=(p_val_threshold)],colour="D_Taj")) + geom_density(mapping = aes(x = Slope_lm_Ne_S_Taj_vs_Gene_Mobility[pvalue_lm_Ne_S_Taj_vs_Gene_Mobility<=(p_val_threshold)],colour="Ne_S_Taj")) + ggtitle(label = "Distribution of Slopes for regression models in which Gene Mobility is the explanatory variable") + xlab("Slope") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=9),plot.subtitle = element_text(hjust=0,size=8)) + geom_vline(xintercept = 0,mapping = aes(x = Slope_lm_Ne_k_hat_vs_Gene_Mobility[pvalue_lm_Ne_k_hat_vs_Gene_Mobility<=(p_val_threshold)])) + scale_color_manual(name="X ~ Gene Mobility",values = c(Ne_k_hat="red",Ne_S_Taj="blue",D_Taj="black")) + xlim(-3,3) + ylim(0,10)
-  ggsave(filename = "Gene_Mobility_significant_slopes.png",path = save_plots_workspace_current_sim,width = 18, height = 10, units = "cm")
-  
-  ggplot() + geom_boxplot(aes(y=c(adj_r_square_lm_Ne_k_hat_vs_Gene_Mobility,adj_r_square_lm_Ne_S_Taj_vs_Gene_Mobility,adj_r_square_lm_D_Taj_vs_Gene_Mobility),x=rep(x = c("Ne_k_hat","Ne_S_Taj","D_Taj"),each=length(adj_r_square_lm_Ne_k_hat_vs_Gene_Mobility)))) + xlab("Response variable") + ylab("Adjusted R_squared")
-  ggsave(filename = "Gene_Mobility_significant_adj_R_squared.png",path = save_plots_workspace_current_sim,width = 18, height = 10, units = "cm")  
+  #Adjusting p_values for multiple testing with bonferroni
+  pvalue_lm_CAI_vs_ps <- p.adjust(pvalue_lm_CAI_vs_ps, method = "bonferroni")
+  pvalue_lm_Ne_k_hat_vs_Gene_Mobility <- p.adjust(pvalue_lm_Ne_k_hat_vs_Gene_Mobility, method = "bonferroni")
+  pvalue_lm_Ne_S_Taj_vs_Gene_Mobility <- p.adjust(pvalue_lm_Ne_S_Taj_vs_Gene_Mobility, method = "bonferroni")
+  pvalue_lm_D_Taj_vs_Gene_Mobility <- p.adjust(pvalue_lm_D_Taj_vs_Gene_Mobility, method = "bonferroni")
   
   #Summary Figures of CAI vs ps
-  ggplot() + geom_density(mapping = aes(x = Slope_lm_CAI_vs_ps[pvalue_lm_CAI_vs_ps<=(p_val_threshold)],colour="CAI_vs_ps")) + ggtitle(label = "Distribution of Slopes for regression CAI vs ps") + xlab("Slope") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=9),plot.subtitle = element_text(hjust=0,size=8)) + geom_vline(xintercept = 0,mapping = aes(x = Slope_lm_CAI_vs_ps[pvalue_lm_CAI_vs_ps<=(p_val_threshold)])) + scale_color_manual(name="CAI ~ ps",values = c(CAI_vs_ps="black")) + xlim(-100,100) + ylim(0,20)
+  ggplot() + geom_density(mapping = aes(x = Slope_lm_CAI_vs_ps[p.adjust(pvalue_lm_CAI_vs_ps,method="bonferroni")<=0.05],colour="CAI_vs_ps")) + ggtitle(label = "Distribution of Slopes for regression CAI vs ps") + xlab("Slope") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=9),plot.subtitle = element_text(hjust=0,size=8)) + geom_vline(xintercept = 0,mapping = aes(x = Slope_lm_CAI_vs_ps[p.adjust(pvalue_lm_CAI_vs_ps,method="bonferroni")<=0.05])) + scale_color_manual(name="CAI ~ ps",values = c(CAI_vs_ps="black")) 
   ggsave(filename = "CAI_vs_ps_significant_slopes.png",path = save_plots_workspace_current_sim,width = 18, height = 10, units = "cm")
   
-  ggplot() + geom_density(mapping = aes(x = adj_r_square_lm_CAI_vs_ps[pvalue_lm_CAI_vs_ps<=(p_val_threshold)],colour="CAI_vs_ps")) + ggtitle(label = "Distribution of R-squared for regression CAI vs ps") + xlab("R-squared") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=9),plot.subtitle = element_text(hjust=0,size=8)) + geom_vline(xintercept = 0,mapping = aes(x = adj_r_square_lm_CAI_vs_ps[pvalue_lm_CAI_vs_ps<=(p_val_threshold)])) + scale_color_manual(name="CAI ~ ps",values = c(CAI_vs_ps="black")) + xlim(-1,1) + ylim(0,20)
+  ggplot() + geom_density(mapping = aes(x = adj_r_squared_lm_CAI_vs_ps[p.adjust(pvalue_lm_CAI_vs_ps,method="bonferroni")<=0.05],colour="CAI_vs_ps")) + ggtitle(label = "Distribution of R-squared for regression CAI vs ps") + xlab("R-squared") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=9),plot.subtitle = element_text(hjust=0,size=8)) + geom_vline(xintercept = 0,mapping = aes(x = adj_r_squared_lm_CAI_vs_ps[p.adjust(pvalue_lm_CAI_vs_ps,method="bonferroni")<=0.05])) + scale_color_manual(name="CAI ~ ps",values = c(CAI_vs_ps="black")) + xlim(-1,1) 
   ggsave(filename = "CAI_vs_ps_significant_r_squared.png",path = save_plots_workspace_current_sim,width = 18, height = 10, units = "cm")
   
+  #Slope_Nb_copy_VS_Gene_mobility vs s_hgt
+  #df_genes_s_hgt$Slope_s_hgt_slope <- Slope_lm_log10_nb_copy_gene_vs_Gene_mobility
+  #tryCatch(expr ={ggplotRegression(fit=lmp(Slope_s_hgt_slope ~ s_gain, data = df_genes_s_hgt,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("Slope_Nb_copy_VS_Gene_mobility_vs_s_hgt_",simulation_name,".png"),xlabl = "Gene HGT selective advantage",ylabl = "Slope_Nb_copy_VS_Gene_mobility")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+  
+  #Significant r-squared distribution for regression Nb_copy VS Gene_mobility 
+  ggplot() + geom_density(mapping = aes(x = adj_r_squared_lm_log10_nb_copy_gene_vs_Gene_mobility[p.adjust(pvalue_lm_log10_nb_copy_gene_vs_Gene_mobility,method="bonferroni")<=0.05])) + xlab("Slope") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=9),plot.subtitle = element_text(hjust=0,size=8)) + geom_vline(xintercept = 0,mapping = aes(x = adj_r_squared_lm_log10_nb_copy_gene_vs_Gene_mobility[p.adjust(pvalue_lm_log10_nb_copy_gene_vs_Gene_mobility,method="bonferroni")<=0.05])) #+ xlim(-100,100) + ylim(0,20)
+  ggsave(filename = "significant_R-squared_lm_PER-GENE_Nb_gene_copies_VS_Gene_mobility.png",path = save_plots_workspace_current_sim,width = 18, height = 10, units = "cm")
+  
+  #Summary Figures of significant Gene_Mobility "PER-GENE" effects
+  # ggplot() + geom_density(mapping = aes(x = Slope_lm_Ne_k_hat_vs_Gene_Mobility[p.adjust(pvalue_lm_Ne_k_hat_vs_Gene_Mobility,method="bonferroni")<=0.05],colour="Ne_k_hat")) + geom_density(mapping = aes(x = Slope_lm_D_Taj_vs_Gene_Mobility[p.adjust(pvalue_lm_D_Taj_vs_Gene_Mobility,method="bonferroni")<=0.05],colour="D_Taj")) + geom_density(mapping = aes(x = Slope_lm_Ne_S_Taj_vs_Gene_Mobility[p.adjust(pvalue_lm_Ne_S_Taj_vs_Gene_Mobility,method="bonferroni")<=0.05],colour="Ne_S_Taj")) + ggtitle(label = "Distribution of Slopes for regression models in which Gene Mobility is the explanatory variable") + xlab("Slope") + ylab("Density")+ theme(plot.title=element_text(hjust=0,size=9),plot.subtitle = element_text(hjust=0,size=8)) + geom_vline(xintercept = 0,mapping = aes(x = Slope_lm_Ne_k_hat_vs_Gene_Mobility[p.adjust(pvalue_lm_Ne_k_hat_vs_Gene_Mobility,method="bonferroni")<=0.05])) + scale_color_manual(name="X ~ Gene Mobility",values = c(Ne_k_hat="red",Ne_S_Taj="blue",D_Taj="black")) + xlim(-3,3) + ylim(0,10)
+  # ggsave(filename = "Gene_Mobility_significant_slopes.png",path = save_plots_workspace_current_sim,width = 18, height = 10, units = "cm")
+  # 
+  # ggplot() + geom_boxplot(aes(y=c(adj_r_squared_lm_Ne_k_hat_vs_Gene_Mobility,adj_r_squared_lm_Ne_S_Taj_vs_Gene_Mobility,adj_r_squared_lm_D_Taj_vs_Gene_Mobility),x=rep(x = c("Ne_k_hat","Ne_S_Taj","D_Taj"),each=length(adj_r_squared_lm_Ne_k_hat_vs_Gene_Mobility)))) + xlab("Response variable") + ylab("Adjusted R_squared")
+  # ggsave(filename = "Gene_Mobility_significant_adj_R_squared.png",path = save_plots_workspace_current_sim,width = 18, height = 10, units = "cm")  
 }
+
 #Interesting mobile genes to look as variant analysis results
 system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("rm -f ",save_plots_workspace_current_sim,"/intersting_genes_variant_analysis.txt"),intern = FALSE,wait = TRUE)
 system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("touch ",save_plots_workspace_current_sim,"/intersting_genes_variant_analysis.txt"),intern = FALSE,wait = TRUE)
-system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("echo \'",paste(v_unique_gene_IDs_current_sim[which(pvalue_lm_Ne_S_Taj_vs_Gene_Mobility<=(p_val_threshold))],collapse=';'),"\' >> ",save_plots_workspace_current_sim,"/interesting_mobile_genes_variant_analysis.txt"),intern = FALSE,wait = TRUE)
+system(ignore.stdout = FALSE, ignore.stderr = TRUE,command=paste0("echo \'",paste(v_unique_gene_IDs_current_sim[which(p.adjust(pvalue_lm_Ne_S_Taj_vs_Gene_Mobility,method="bonferroni")<=0.05)],collapse=';'),"\' >> ",save_plots_workspace_current_sim,"/interesting_mobile_genes_variant_analysis.txt"),intern = FALSE,wait = TRUE)
 
 
 #Only keep .gz files

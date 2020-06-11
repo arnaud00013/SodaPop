@@ -22,7 +22,7 @@ sodapop_workspace <- as.character(commandArgs(TRUE)[1]) #ABSOLUTE Path of the fo
 sodapop_workspace <- ifelse(test=substr(x = sodapop_workspace,start = nchar(sodapop_workspace),stop = nchar(sodapop_workspace))=="/",yes=sodapop_workspace,no=paste0(sodapop_workspace,"/"))
 sim_output_workpace <- paste0(sodapop_workspace,"out/") #ABSOLUTE path of the folder containing Sodapop simulations raw output repertory 
 results_output_workspace <- paste0(sodapop_workspace,"Sim_Results/") #ABSOLUTE path of the folder containing the Post-simulation genes variants analysis results. Will be created if it does not exist yet.
-hgt_rates <- c("1mu","10mu","100mu","1000mu")
+hgt_rates <- c("1typicalProkMu","10typicalProkMu","100typicalProkMu","1000typicalProkMu")
 lambda_exp_distr_s_hgt <- c("neutral","1E3","1E6","1E9")
 mtx_slopes_Ne_k_hat_vs_Gene_Mobility <- matrix(data = NA,nrow = 4,ncol = 4)
 rownames(mtx_slopes_Ne_k_hat_vs_Gene_Mobility) <- hgt_rates
@@ -47,15 +47,14 @@ lst_current_sim_Ne_S_Taj_vs_Gene_mobility <- list(adj_r_sq_current_lm=NA,slope_c
 
 for (i in 1:length(hgt_rates)){
   for (j in 1:length(lambda_exp_distr_s_hgt)){
-    simulation_name <- paste0("simTenSpeciesHGT_",hgt_rates[i],"_",lambda_exp_distr_s_hgt[j])
+    simulation_name <- paste0("simTenSpeciesHGT_with_higherMutrate_",hgt_rates[i],"_",lambda_exp_distr_s_hgt[j])
     df_current_sim <- read.csv(file = paste0("D:/Bureau/SodaPop_test_new/Sim_Results/mtx_variants_analysis_results_simulation_",simulation_name,".csv"),header = TRUE,sep = "\t",stringsAsFactors = FALSE)
-    df_subset_near_end_sim_current_reg <- subset(df_current_sim,Generation_ctr%in%(sort(unique(Generation_ctr),decreasing = TRUE)[sample(1:3,1)]))
-    df_subset_near_end_sim_current_reg <- subset(df_subset_near_end_sim_current_reg,nb_uniq_species_of_gene!=0)
-    df_subset_near_end_sim_current_reg$Ne_k_hat <- log10(df_subset_near_end_sim_current_reg$Ne_k_hat+(1e-16)) 
-    df_subset_near_end_sim_current_reg$nb_uniq_species_of_gene <- log10(df_subset_near_end_sim_current_reg$nb_uniq_species_of_gene+(1e-16))
-    df_subset_near_end_sim_current_reg$Ne_S_Taj <- log10(df_subset_near_end_sim_current_reg$Ne_S_Taj+(1e-16))
-    tryCatch(expr ={lst_current_sim_Ne_k_hat_vs_Gene_mobility <- ggplotRegression(fit=lmp(Ne_k_hat ~ nb_uniq_species_of_gene, data = df_subset_near_end_sim_current_reg,na.action=na.omit,center=FALSE),ggsave_path=results_output_workspace,the_filename=paste0("Multiple_gene_near_endsim_Ne_k_hat_vs_Gene_Mobility_sim_",simulation_name,".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_k_hat+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
-    tryCatch(expr ={lst_current_sim_Ne_S_Taj_vs_Gene_mobility <-ggplotRegression(fit=lmp(Ne_S_Taj ~ nb_uniq_species_of_gene, data = df_subset_near_end_sim_current_reg,na.action=na.omit,center=FALSE),ggsave_path=results_output_workspace,the_filename=paste0("Multiple_gene_near_endsim_Ne_S_Taj_vs_Gene_Mobility_sim_",simulation_name,".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_S_Taj+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+    df_mbgs_variants_stats_before_max_mobility <- subset(x = df_current_sim,subset = nb_uniq_species_of_gene!=max(df_current_sim$nb_uniq_species_of_gene,na.rm=TRUE))
+    df_mbgs_variants_stats_before_max_mobility$Ne_k_hat <- log10(df_mbgs_variants_stats_before_max_mobility$Ne_k_hat+(1E-16))
+    df_mbgs_variants_stats_before_max_mobility$Ne_S_Taj <- log10(df_mbgs_variants_stats_before_max_mobility$Ne_S_Taj+(1E-16))
+    df_mbgs_variants_stats_before_max_mobility$nb_uniq_species_of_gene <- log10(df_mbgs_variants_stats_before_max_mobility$nb_uniq_species_of_gene+(1E-16))
+    tryCatch(expr ={lst_current_sim_Ne_k_hat_vs_Gene_mobility <- ggplotRegression(fit=lmp(Ne_k_hat ~ nb_uniq_species_of_gene, data = df_mbgs_variants_stats_before_max_mobility,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("Multiple_mbgs_at_endsim_Ne_k_hat_vs_Gene_Mobility_sim_",simulation_name,".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_k_hat+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
+    tryCatch(expr ={lst_current_sim_Ne_S_Taj_vs_Gene_mobility <- ggplotRegression(fit=lmp(Ne_S_Taj ~ nb_uniq_species_of_gene, data = df_mbgs_variants_stats_before_max_mobility,na.action=na.omit,center=FALSE),ggsave_path=save_plots_workspace_current_sim,the_filename=paste0("Multiple_mbgs_at_endsim_Ne_S_Taj_vs_Gene_Mobility_sim_",simulation_name,".png"),xlabl = "log10(Gene_Mobility+(1e-16))",ylabl = "log10(Ne_S_Taj+(1e-16))")},error=function(e) print(paste0("Regression skipped because of following error : ",e)))
     mtx_slopes_Ne_k_hat_vs_Gene_Mobility[i,j] <- lst_current_sim_Ne_k_hat_vs_Gene_mobility$slope_current_lm
     mtx_rsq_Ne_k_hat_vs_Gene_Mobility[i,j] <- lst_current_sim_Ne_k_hat_vs_Gene_mobility$adj_r_sq_current_lm
     mtx_pval_Ne_k_hat_vs_Gene_Mobility[i,j] <- lst_current_sim_Ne_k_hat_vs_Gene_mobility$p_val_current_lm
