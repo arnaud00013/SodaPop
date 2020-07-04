@@ -12,7 +12,7 @@ seed(12345)
 
 -This script creates the input files for Sodapop simulations using the pangenome evolution module
 
--Arguments : The absolute path of the SodaPop workspace, the name of the .gene header file, the name of the .cell header file, the name of the population_data header file,the number of species simulated, the size of the whole community pool of accessory genes, the number of core genes at the start of the simulation and the number of accessory genes that are mobile.
+-Arguments : The absolute path of the SodaPop workspace, the name of the .gene header file, the name of the .cell header file, the name of the population_data header file,the number of species simulated, the size of the whole community pool of accessory genes, the number of housekeeping genes at the start of the simulation and the number of accessory genes that are mobile.
 
 -All header files should be in a folder called headers/ stored in the files/ repertory of SodaPop!!!
 """
