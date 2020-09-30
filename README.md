@@ -2,7 +2,7 @@
 
 ## Developed by the http://www.serohijoslab.org/
 
-## Visit the [SodaPop website](https://louisgt.github.io/SodaPop/) for online documentation or [download the SodaPop user manual](https://github.com/louisgt/SodaPop/files/2673235/manual_2018.pdf).
+## Visit the [SodaPop website](https://louisgt.github.io/SodaPop/) for online documentation or [download the SodaPop user manual](https://github.com/louisgt/SodaPop/files/2673235/manual_2018.pdf). The new pangenome evolution model documentation is now available [here](https://github.com/arnaud00013/SodaPop/blob/Sodapop-pev/docs/SodaPop_pangenome_evolution_module.pdf) and all the scripts to setup the simulations are available [here](https://github.com/arnaud00013/SodaPop/blob/Sodapop-pev/tools).
 
 ## Overview
 
@@ -38,6 +38,3 @@ SodaPop is free software. You can redistribute it or modify it under the terms o
 SodaPop is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with SodaPop.  If not, see <http://www.gnu.org/licenses/>.
-
-# SodaPop pangenome evolution module
-The new pangenome evolution model is explained at https://github.com/arnaud00013/SodaPop/blob/Sodapop-pev/docs/SodaPop_pangenome_evolution_module.pdf and all scripts to setup the simulations are available in https://github.com/arnaud00013/SodaPop/blob/Sodapop-pev/tools.
