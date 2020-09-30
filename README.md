@@ -40,3 +40,4 @@ SodaPop is distributed in the hope that it will be useful, but WITHOUT ANY WARRA
 You should have received a copy of the GNU General Public License along with SodaPop.  If not, see <http://www.gnu.org/licenses/>.
 
 # SodaPop pangenome evolution module
+The new pangenome evolution model is explained at https://github.com/arnaud00013/SodaPop/blob/Sodapop-pev/docs/SodaPop_pangenome_evolution_module.pdf and all scripts to setup the simulations are available in https://github.com/arnaud00013/SodaPop/blob/Sodapop-pev/tools.
